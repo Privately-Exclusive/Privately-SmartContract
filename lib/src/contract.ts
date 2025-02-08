@@ -7,7 +7,13 @@ import {
   TypedDataField,
   BigNumberish
 } from "ethers";
-import ARTIFACT from "../../artifacts/contracts/PrivatelyToken.sol/PrivatelyNFT.json";
+
+const artifactPath = process.env.PRIVATELY_NFT_ARTIFACT_PATH;
+if (!artifactPath) {
+  throw new Error("PRIVATELY_NFT_ARTIFACT_PATH environment variable is not set.");
+}
+const ARTIFACT = require(artifactPath);
+
 
  /**
  * Represents the data needed to create a mint request (EIP-712).

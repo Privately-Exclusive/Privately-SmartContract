@@ -1,12 +1,12 @@
 #!/bin/bash
 
-npx hardhat node --hostname 0.0.0.0 &
+npx hardhat node &
 NODE_PID=$!
 
 echo "Starting Hardhat Node (PID: $NODE_PID)..."
 
+echo "Waiting for Hardhat Node to start on 127.0.0.1:8545..."
 while ! nc -z 127.0.0.1 8545; do
-  echo "Waiting for Hardhat Node to start on 127.0.0.1:8545..."
   sleep 1
 done
 

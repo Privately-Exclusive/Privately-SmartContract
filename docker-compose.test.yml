@@ -5,7 +5,7 @@ services:
     ports:
       - "8545:8545"
     volumes:
-      - .:/app
+      - shared-data:/app
     command: [ "bash", "-c", "./entrypoint.sh > /dev/null 2>&1" ]
 
   test-runner:
@@ -15,8 +15,11 @@ services:
     depends_on:
       run-hardhat-node:
         condition: service_started
-    volumes:
-      - .:/app
     environment:
       - PRIVATELY_NFT_ARTIFACT_PATH=/app/artifacts/contracts/PrivatelyToken.sol/PrivatelyNFT.json
+    volumes:
+      - shared-data:/app
     command: [ "bash", "-c", "while [ ! -f /app/deployment-complete.txt ]; do echo 'Waiting for deployment...'; sleep 10; done; cd lib && npm test" ]
+
+volumes:
+  shared-data:

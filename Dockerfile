@@ -6,4 +6,3 @@ COPY package*.json ./
 RUN npm install
 COPY . .
 EXPOSE 8545
-CMD ["bash", "./run_node.sh"]

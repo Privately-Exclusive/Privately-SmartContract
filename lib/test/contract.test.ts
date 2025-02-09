@@ -1,255 +1,290 @@
-/**
- * This test suite demonstrates interaction with the PrivatelyNFT smart contract
- * through gasless minting and transferring. It covers:
- *  - Mint Flow (User1 mints an NFT via the Relayer)
- *  - Transfer Flow (User1 transfers the NFT to User2 via the Relayer)
- *  - A "Ping Pong" flow, where User1 and User2 repeatedly transfer the same NFT
- *    back and forth, also via the Relayer.
- *
- * This version refactors some repetitive code by adding helper functions:
- *  - `getBalances()` to retrieve balances of User1, User2, and Relayer at once
- *  - `expectGasIsPaidByRelayer()` to check that User1 and User2 did not pay gas,
- *    and only Relayer's balance decreased.
- *  - `relayAndCheckGas()` to streamline the process of sending a transaction
- *    from the Relayer with an updated nonce and verifying balances.
- */
+import { expect } from "chai";
+import { JsonRpcProvider, Wallet } from "ethers";
+import { before, describe } from "mocha";
+import { MintRequest, PrivatelyNFTClient, TransferRequest } from "../src";
 
-import {JsonRpcProvider, Wallet, Contract} from "ethers";
-import {expect} from "chai";
-import {PrivatelyNFTClient} from "../src";
-import ARTIFACT from "../../artifacts/contracts/PrivatelyToken.sol/PrivatelyNFT.json";
+
+
+const ARTIFACT: object = require(process.env.PRIVATELY_NFT_ARTIFACT_PATH as string);
+
+
 
 const PROVIDER_URL = "http://127.0.0.1:8545/";
-const USER1_PRIVATE_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
-const USER2_PRIVATE_KEY = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d";
-const RELAYER_PRIVATE_KEY = "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a";
-const CONTRACT_ADDRESS = "0x5fbdb2315678afecb367f032d93f642f64180aa3";
+const RELAYER_PRIVATE_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
+const USER1_PRIVATE_KEY = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d";
+const USER2_PRIVATE_KEY = "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a";
 
-describe("--- PrivatelyNFT Contract (Split Tests) ---", function () {
+const FIRST_TITLE = "Nap - La Kiffance";
+const SECOND_TITLE = "SCH - Otto";
+const THIRD_TITLE = "The Weeknd - Blinding Lights";
+const FOURTH_TITLE = "Rosalia - La Fama";
+
+describe("PrivatelyNFTClient - Comprehensive Tests", function () {
     let provider: JsonRpcProvider;
-    let user1: Wallet, user2: Wallet, relayer: Wallet;
-    let clientUser1: PrivatelyNFTClient;
-    let clientUser2: PrivatelyNFTClient;
-    let clientRelayer: PrivatelyNFTClient;
-    let nftContract: Contract;
 
-    let mintedTokenId: bigint;
-    let createdMintRequest: { request: any; signature: string };
-    let createdTransferRequest: { request: any; signature: string };
+    let relayerWallet: Wallet;
+    let user1Wallet: Wallet;
+    let user2Wallet: Wallet;
 
-    /**
-     * Retrieve the current balances for user1, user2, and relayer.
-     */
-    async function getBalances() {
-        const [balUser1, balUser2, balRelayer] = await Promise.all([
-            provider.getBalance(user1.address),
-            provider.getBalance(user2.address),
-            provider.getBalance(relayer.address),
-        ]);
-        return {user1: balUser1, user2: balUser2, relayer: balRelayer};
-    }
+    let relayerClient: PrivatelyNFTClient;
+    let user1Client: PrivatelyNFTClient;
+    let user2Client: PrivatelyNFTClient;
 
-    /**
-     * Verify that only the relayer's balance has decreased after a transaction,
-     * while user1 and user2 balances remain unchanged.
-     */
-    function expectGasIsPaidByRelayer(
-        before: { user1: bigint; user2: bigint; relayer: bigint },
-        after: { user1: bigint; user2: bigint; relayer: bigint }
-    ) {
-        expect(after.user1 === before.user1).to.be.true;
-        expect(after.user2 === before.user2).to.be.true;
-        expect(after.relayer < before.relayer).to.be.true;
-    }
-
-    /**
-     * Helper to relay a transaction (mint or transfer) from the relayer,
-     * then verify that only the relayer paid gas.
-     * @param relayFn The function to call (relayMintRequest or relayTransferRequest).
-     * @param request The MintRequest or TransferRequest to pass.
-     * @param signature The EIP-712 signature.
-     */
-    async function relayAndCheckGas(
-        relayFn: (
-            request: any,
-            signature: string,
-            overrides?: Record<string, any>
-        ) => Promise<any>,
-        request: any,
-        signature: string
-    ) {
-        const balancesBefore = await getBalances();
-        const relayerNonce = await provider.getTransactionCount(
-            relayer.address,
-            "latest"
-        );
-
-        // Send transaction via the chosen relay method
-        const tx = await relayFn.call(clientRelayer, request, signature, {
-            nonce: relayerNonce,
-        });
-        const receipt = await tx.wait(1);
-        expect(receipt?.status).to.equal(1);
-
-        const balancesAfter = await getBalances();
-        expectGasIsPaidByRelayer(await balancesBefore, await balancesAfter);
-    }
 
     before(async function () {
-        // Initialize wallets and clients
         provider = new JsonRpcProvider(PROVIDER_URL);
-        user1 = new Wallet(USER1_PRIVATE_KEY, provider);
-        user2 = new Wallet(USER2_PRIVATE_KEY, provider);
-        relayer = new Wallet(RELAYER_PRIVATE_KEY, provider);
 
-        clientUser1 = new PrivatelyNFTClient(user1);
-        clientUser2 = new PrivatelyNFTClient(user2);
-        clientRelayer = new PrivatelyNFTClient(relayer);
+        relayerWallet = new Wallet(RELAYER_PRIVATE_KEY, provider);
+        user1Wallet = new Wallet(USER1_PRIVATE_KEY, provider);
+        user2Wallet = new Wallet(USER2_PRIVATE_KEY, provider);
 
-        await clientUser1.init();
-        await clientUser2.init();
-        await clientRelayer.init();
+        relayerClient = new PrivatelyNFTClient(relayerWallet, ARTIFACT);
+        user1Client = new PrivatelyNFTClient(user1Wallet, ARTIFACT);
+        user2Client = new PrivatelyNFTClient(user2Wallet, ARTIFACT);
 
-        nftContract = new Contract(CONTRACT_ADDRESS, ARTIFACT.abi, provider);
+        await relayerClient.init();
+        await user1Client.init();
+        await user2Client.init();
     });
 
-    describe("Mint Flow", function () {
-        const title = "Test NFT";
-        const author = "User1";
-        const tokenURI = "ipfs://test-uri";
+    describe("Minting Functions", function () {
+        let startNftCount: number;
+        let mintRequest: MintRequest;
+        let mintSignature: string;
 
-        it("USER1 should create a mint request", async function () {
-            this.timeout(30_000);
+        it("USER1 should create a mint request with valid request object and signature", async function () {
+            this.timeout(10_000);
 
-            createdMintRequest = await clientUser1.createMintRequest(
-                title,
-                author,
-                tokenURI
-            );
-            const nonceOnChain = await clientUser1.getNonce(
-                createdMintRequest.request.user
-            );
-            expect(nonceOnChain).to.equal(createdMintRequest.request.nonce);
+            startNftCount = (await user1Client.getNFTs()).length;
+
+            ({request: mintRequest, signature: mintSignature} =
+                await user1Client.createMintRequest(FIRST_TITLE, "url_" + FIRST_TITLE));
+
+            expect(mintRequest).to.be.an("object");
+            expect(mintSignature).to.be.a("string");
         });
 
-        it("RELAYER should relay the USER1 mint request and pay gas", async function () {
-            this.timeout(30_000);
+        it("RELAYER should relay USER1 the mint request and mint an NFT", async function () {
+            this.timeout(10_000);
 
-            await relayAndCheckGas(
-                clientRelayer.relayMintRequest,
-                createdMintRequest.request,
-                createdMintRequest.signature
-            );
+            expect(mintRequest).to.exist;
+            expect(mintSignature).to.exist;
+
+            const tx = await relayerClient.relayMintRequest(mintRequest, mintSignature);
+            await tx.wait(1);
+            expect(tx).to.have.property("hash");
         });
 
-        it("Minted NFT data should be correct and USER1 should own the NFT", async function () {
-            this.timeout(30_000);
+        it("USER1 should have one more NFT after minting", async function () {
+            this.timeout(10_000);
 
-            const allNFTs = await clientUser1.getAllNFTs();
-            expect(allNFTs.length).to.be.greaterThan(0);
-
-            mintedTokenId = allNFTs[allNFTs.length - 1];
-            expect(mintedTokenId).to.exist;
-
-            const insideData = await clientUser1.getInsideData(mintedTokenId);
-            expect(insideData.title).to.equal(title);
-            expect(insideData.author).to.equal(author);
-
-            const owner = await nftContract.ownerOf(mintedTokenId);
-            expect(owner).to.equal(user1.address);
-        });
-    });
-
-    describe("Transfer Flow", function () {
-        it("USER1 should create a transfer request to send NFT to USER2", async function () {
-            this.timeout(30_000);
-
-            expect(mintedTokenId).to.exist;
-            createdTransferRequest = await clientUser1.createTransferRequest(
-                user2.address,
-                mintedTokenId
-            );
-            const nonceOnChain = await clientUser1.getNonce(
-                createdTransferRequest.request.from
-            );
-            expect(nonceOnChain).to.equal(createdTransferRequest.request.nonce);
+            const endNftCount = (await user1Client.getNFTs()).length;
+            expect(endNftCount).to.equal(startNftCount + 1);
         });
 
-        it("RELAYER should relay the USER1 transfer request and pay gas", async function () {
-            this.timeout(30_000);
+        it("USER2 should create a mint request with valid request object and signature", async function () {
+            this.timeout(10_000);
 
-            await relayAndCheckGas(
-                clientRelayer.relayTransferRequest,
-                createdTransferRequest.request,
-                createdTransferRequest.signature
-            );
+            startNftCount = (await user2Client.getNFTs()).length;
+
+            ({request: mintRequest, signature: mintSignature} =
+                await user2Client.createMintRequest(SECOND_TITLE, "url_" + SECOND_TITLE));
+
+            expect(mintRequest).to.be.an("object");
+            expect(mintSignature).to.be.a("string");
         });
 
-        it("Transferred NFT data should be correct and USER2 should receive the NFT", async function () {
-            this.timeout(30_000);
+        it("RELAYER should relay USER2 the mint request and mint an NFT", async function () {
+            this.timeout(10_000);
 
-            const ownerAfter = await nftContract.ownerOf(mintedTokenId);
-            expect(ownerAfter).to.equal(user2.address);
+            expect(mintRequest).to.exist;
+            expect(mintSignature).to.exist;
 
-            const insideData = await clientUser2.getInsideData(mintedTokenId);
-            expect(insideData.title).to.equal("Test NFT");
-            expect(insideData.author).to.equal("User1");
+            const tx = await relayerClient.relayMintRequest(mintRequest, mintSignature);
+            await tx.wait(1);
+            expect(tx).to.have.property("hash");
+        });
+
+        it("USER1 should have one more NFT after minting", async function () {
+            this.timeout(10_000);
+
+            const endNftCount = (await user2Client.getNFTs()).length;
+            expect(endNftCount).to.equal(startNftCount + 1);
         });
     });
 
-    describe("Ping Pong Transfer Flow", function () {
-        it("should ping pong the NFT 10 times with USER2 as final owner", async function () {
-            // Increase the timeout for this iteration-heavy test
-            this.timeout(120_000);
 
-            for (let i = 0; i < 10; i++) {
-                let sender: Wallet;
-                let senderClient: PrivatelyNFTClient;
-                let receiver: string;
+    describe("NFT Retrieval Functions", function () {
+        it("should retrieve all NFTs from the contract", async function () {
+            this.timeout(1_000);
 
-                // Alternate sender/receiver each iteration
-                if (i % 2 === 0) {
-                    sender = user2;
-                    senderClient = clientUser2;
-                    receiver = user1.address;
-                } else {
-                    sender = user1;
-                    senderClient = clientUser1;
-                    receiver = user2.address;
-                }
+            const allNFTs = await relayerClient.getAllNFTs();
+            expect(allNFTs).to.be.an("array").that.is.not.empty;
 
-                // Create a new transfer request
-                const transferReq = await senderClient.createTransferRequest(
-                    receiver,
-                    mintedTokenId
-                );
-                const nonceOnChain = await senderClient.getNonce(
-                    transferReq.request.from
-                );
-                expect(nonceOnChain).to.equal(transferReq.request.nonce);
-
-                // Relay and ensure Relayer pays gas
-                await relayAndCheckGas(
-                    clientRelayer.relayTransferRequest,
-                    transferReq.request,
-                    transferReq.signature
-                );
-
-                // Confirm ownership after transfer
-                const currentOwner = await nftContract.ownerOf(mintedTokenId);
-                expect(currentOwner).to.equal(receiver);
-
-                console.log(`\t\tPingPong #${i + 1} - Transfer complete`);
+            for (const nft of allNFTs) {
+                const data = await relayerClient.getData(nft);
+                expect(data).to.have.property("title");
+                expect(data.title).to.be.a("string");
+                expect(data.title).to.satisfy((title: string) => {
+                    return title === FIRST_TITLE || title === SECOND_TITLE;
+                });
             }
+        });
 
-            // Validate that final owner is USER2
-            const finalOwner = await nftContract.ownerOf(mintedTokenId);
-            expect(finalOwner).to.equal(user2.address);
 
-            // Ensure inside data is still intact
-            const insideData = await clientUser2.getInsideData(mintedTokenId);
-            expect(insideData.title).to.equal("Test NFT");
-            expect(insideData.author).to.equal("User1");
+        it("should retrieve all NFTs of USER1", async function () {
+            this.timeout(1_000);
+
+            const user1NFTs = await user1Client.getNFTs();
+            expect(user1NFTs).to.be.an("array").that.is.not.empty;
+
+            for (const nft of user1NFTs) {
+                const data = await user1Client.getData(nft);
+                expect(data).to.have.property("title");
+                expect(data.title).to.be.a("string");
+                expect(data.title).to.be.equal(FIRST_TITLE);
+                expect(data.tokenURI).to.be.equal("url_" + FIRST_TITLE);
+            }
+        });
+
+
+        it("should retrieve all NFTs of USER2", async function () {
+            this.timeout(1_000);
+
+            const user1NFTs = await user2Client.getNFTs();
+            expect(user1NFTs).to.be.an("array").that.is.not.empty;
+
+            for (const nft of user1NFTs) {
+                const data = await user2Client.getData(nft);
+                expect(data).to.have.property("title");
+                expect(data.title).to.be.a("string");
+                expect(data.title).to.be.equal(SECOND_TITLE);
+                expect(data.tokenURI).to.be.equal("url_" + SECOND_TITLE);
+            }
+        });
+
+
+        it("USER1 should retrieve all NFTs of USER2", async function () {
+            this.timeout(1_000);
+
+            const user2NFTs = await user1Client.getNFTsOfUser(user2Wallet.address);
+            expect(user2NFTs).to.be.an("array").that.is.not.empty;
+
+            for (const nft of user2NFTs) {
+                const data = await user1Client.getData(nft);
+                expect(data).to.have.property("title");
+                expect(data.title).to.be.a("string");
+                expect(data.title).to.be.equal(SECOND_TITLE);
+                expect(data.tokenURI).to.be.equal("url_" + SECOND_TITLE);
+            }
+        });
+    });
+
+    describe("Transfer Functions", function () {
+        let transferTokenId: bigint;
+        let transferRequest: TransferRequest;
+        let transferSignature: string;
+
+        before(async function () {
+            this.timeout(10_000);
+            const {request, signature} = await user1Client.createMintRequest(
+                THIRD_TITLE,
+                "url_" + THIRD_TITLE
+            );
+            const tx = await relayerClient.relayMintRequest(request, signature);
+            await tx.wait(1);
+
+            const userNFTs = await user1Client.getNFTs();
+            transferTokenId = userNFTs[userNFTs.length - 1];
+        });
+
+
+        it("USER1 should create a valid transfer request for USER2", async function () {
+            this.timeout(1_000);
+
+            ({request: transferRequest, signature: transferSignature} =
+                await user1Client.createTransferRequest(user2Wallet.address, transferTokenId));
+
+            expect(transferRequest).to.be.an("object");
+            expect(transferSignature).to.be.a("string");
+        });
+
+        it("RELAYER should relay the transfer request and transfer the NFT", async function () {
+            this.timeout(10_000);
+
+            expect(transferRequest).to.exist;
+            expect(transferSignature).to.exist;
+
+            const tx = await relayerClient.relayTransferRequest(transferRequest, transferSignature);
+            await tx.wait(1);
+            expect(tx).to.have.property("hash");
+        });
+
+        it("USER2 should have the transferred NFT", async function () {
+            this.timeout(1_000);
+
+            const user2NFTs = await user2Client.getNFTs();
+            expect(user2NFTs).to.include(transferTokenId);
+
+            const data = await user2Client.getData(transferTokenId);
+            expect(data).to.have.property("title");
+            expect(data.title).to.be.a("string");
+            expect(data.title).to.be.equal(THIRD_TITLE);
+            expect(data.tokenURI).to.be.equal("url_" + THIRD_TITLE);
+        });
+    });
+
+    describe("Ping pong transfer 5 times", function () {
+        let transferTokenId: bigint;
+
+        before(async function () {
+            this.timeout(10_000);
+            const {request, signature} = await user1Client.createMintRequest(
+                FOURTH_TITLE,
+                "url_" + FOURTH_TITLE
+            );
+            const tx = await relayerClient.relayMintRequest(request, signature);
+            await tx.wait(1);
+
+            const userNFTs = await user1Client.getNFTs();
+            transferTokenId = userNFTs[userNFTs.length - 1];
+        });
+
+
+        async function transferNFT(from: PrivatelyNFTClient, to: PrivatelyNFTClient, tokenId: bigint) {
+            const toAddress = await to.signer.getAddress();
+            const {request, signature} = await from.createTransferRequest(toAddress, tokenId);
+            expect(request).to.be.an("object");
+            expect(signature).to.be.a("string");
+
+            const tx = await relayerClient.relayTransferRequest(request, signature);
+            expect(tx).to.have.property("hash");
+
+            await tx.wait(1);
+        }
+
+
+        async function ensureNFTOwnership(client: PrivatelyNFTClient, tokenId: bigint, title: string) {
+            const nfts = await client.getNFTs();
+            expect(nfts).to.include(tokenId);
+
+            const data = await client.getData(tokenId);
+            expect(data).to.have.property("title");
+            expect(data.title).to.be.a("string");
+            expect(data.title).to.be.equal(title);
+            expect(data.tokenURI).to.be.equal("url_" + title);
+        }
+
+
+        Array.from({length: 5}).forEach((_, i) => {
+            it(`Transfer [${i + 1}/5]: USER1 -> USER2 & USER2 -> USER1`, async function () {
+                this.timeout(30_000);
+                await transferNFT(user1Client, user2Client, transferTokenId);
+                await ensureNFTOwnership(user2Client, transferTokenId, FOURTH_TITLE);
+
+                await transferNFT(user2Client, user1Client, transferTokenId);
+                await ensureNFTOwnership(user1Client, transferTokenId, FOURTH_TITLE);
+            });
         });
     });
 });

@@ -1,0 +1,22 @@
+services:
+  run-hardhat-node:
+    build: .
+    container_name: run-hardhat-node
+    ports:
+      - "8545:8545"
+    volumes:
+      - .:/app
+    command: [ "bash", "-c", "./entrypoint.sh > /dev/null 2>&1" ]
+
+  test-runner:
+    build: .
+    network_mode: "service:run-hardhat-node"
+    container_name: hardhat-test
+    depends_on:
+      run-hardhat-node:
+        condition: service_started
+    volumes:
+      - .:/app
+    environment:
+      - PRIVATELY_NFT_ARTIFACT_PATH=/app/artifacts/contracts/PrivatelyToken.sol/PrivatelyNFT.json
+    command: [ "bash", "-c", "while [ ! -f /app/deployment-complete.txt ]; do echo 'Waiting for deployment...'; sleep 10; done; cd lib && npm test" ]

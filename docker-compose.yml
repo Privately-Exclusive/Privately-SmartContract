@@ -1,0 +1,9 @@
+services:
+  hardhat-node:
+    build: .
+    container_name: hardhat-node
+    ports:
+      - "8545:8545"
+    volumes:
+      - .:/app
+    command: [ "bash", "./run_node.sh" ]

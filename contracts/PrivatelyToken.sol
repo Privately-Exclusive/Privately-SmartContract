@@ -16,7 +16,7 @@ contract PrivatelyNFT is ERC721URIStorage, EIP712 {
      */
     struct InsideData {
         string title;
-        string author;
+        address author;
     }
 
 
@@ -32,7 +32,7 @@ contract PrivatelyNFT is ERC721URIStorage, EIP712 {
     struct MintRequest {
         address user;
         string title;
-        string author;
+        address author;
         string tokenURI;
         uint256 nonce;
     }
@@ -56,11 +56,11 @@ contract PrivatelyNFT is ERC721URIStorage, EIP712 {
 
 
     // Typehash for EIP-712 mint requests
-    bytes32 private constant MINT_REQUEST_TYPEHASH = 
-        keccak256("MintRequest(address user,string title,string author,string tokenURI,uint256 nonce)");
-    
+    bytes32 private constant MINT_REQUEST_TYPEHASH =
+        keccak256("MintRequest(address user,string title,address author,string tokenURI,uint256 nonce)");
+
     // Typehash for EIP-712 transfer requests
-    bytes32 private constant TRANSFER_REQUEST_TYPEHASH = 
+    bytes32 private constant TRANSFER_REQUEST_TYPEHASH =
         keccak256("TransferRequest(address from,address to,uint256 tokenId,uint256 nonce)");
 
 
@@ -81,7 +81,7 @@ contract PrivatelyNFT is ERC721URIStorage, EIP712 {
      * @param name The name of the NFT collection.
      * @param symbol The symbol of the NFT collection.
      */
-    constructor(string memory name, string memory symbol) 
+    constructor(string memory name, string memory symbol)
         ERC721(name, symbol)
         EIP712(name, "1.0.0")
     {}
@@ -92,32 +92,36 @@ contract PrivatelyNFT is ERC721URIStorage, EIP712 {
      * @dev Mints an NFT using a gasless transaction (meta-transaction).
      * @param user The address of the user receiving the NFT.
      * @param title The title of the NFT.
-     * @param author The author of the NFT.
      * @param tokenURI The URI pointing to the NFT's metadata.
      * @param signature The EIP-712 signature from the user authorizing the mint.
      */
     function mintGaslessNFT(
         address user,
         string calldata title,
-        string calldata author,
         string calldata tokenURI,
         bytes calldata signature
     ) external {
         // Create a MintRequest struct
-        MintRequest memory request = MintRequest(user, title, author, tokenURI, nonces[user]);
-        
+        MintRequest memory request = MintRequest(
+            user,
+            title,
+            user,
+            tokenURI,
+            nonces[user]
+        );
+
         // Hash the request data using EIP-712
         bytes32 digest = _hashTypedDataV4(
             keccak256(abi.encode(
                 MINT_REQUEST_TYPEHASH,
                 request.user,
                 keccak256(bytes(request.title)),
-                keccak256(bytes(request.author)),
+                request.author,
                 keccak256(bytes(request.tokenURI)),
                 request.nonce
             ))
         );
-        
+
         // Recover the signer's address from the signature
         address signer = digest.recover(signature);
         require(signer == user, "Invalid signature");
@@ -127,7 +131,7 @@ contract PrivatelyNFT is ERC721URIStorage, EIP712 {
 
         // Generate a unique token ID and mint the NFT
         uint256 tokenId = uint256(keccak256(abi.encodePacked(user, block.timestamp, title)));
-        _mintAndStore(user, tokenId, title, author, tokenURI);
+        _mintAndStore(user, tokenId, title, user, tokenURI);
     }
 
 
@@ -147,7 +151,7 @@ contract PrivatelyNFT is ERC721URIStorage, EIP712 {
     ) external {
         // Create a TransferRequest struct
         TransferRequest memory request = TransferRequest(from, to, tokenId, nonces[from]);
-        
+
         // Hash the request data using EIP-712
         bytes32 digest = _hashTypedDataV4(
             keccak256(abi.encode(
@@ -158,7 +162,7 @@ contract PrivatelyNFT is ERC721URIStorage, EIP712 {
                 request.nonce
             ))
         );
-        
+
         // Recover the signer's address from the signature
         address signer = digest.recover(signature);
         require(signer == from, "Invalid signature");
@@ -185,7 +189,7 @@ contract PrivatelyNFT is ERC721URIStorage, EIP712 {
         address to,
         uint256 tokenId,
         string memory title,
-        string memory author,
+        address author,
         string memory tokenURI
     ) internal {
         // Store the internal data for the NFT
@@ -213,17 +217,20 @@ contract PrivatelyNFT is ERC721URIStorage, EIP712 {
 
 
     /**
-     * @dev Retrieves the internal data of an NFT.
-     * @param tokenId The unique identifier of the NFT.
-     * @return title The title associated with the NFT.
-     * @return author The author associated with the NFT.
-     */
-    function getInsideData(uint256 tokenId) external view returns (string memory title, string memory author) {
+    * @dev Retrieves the complete metadata of an NFT including title, author, and tokenURI.
+    * @param tokenId The unique identifier of the NFT.
+    * @return title The title associated with the NFT.
+    * @return author The author associated with the NFT.
+    * @return tokenURI_ The URI pointing to the NFT's metadata.
+    */
+    function getData(uint256 tokenId) external view returns (string memory title, address author, string memory tokenURI_) {
         require(_exists(tokenId), "Token does not exist");
         InsideData memory data = insideData[tokenId];
         title = data.title;
         author = data.author;
+        tokenURI_ = tokenURI(tokenId);
     }
+
 
 
 
@@ -244,5 +251,26 @@ contract PrivatelyNFT is ERC721URIStorage, EIP712 {
      */
     function getAllNFTs() external view returns (uint256[] memory) {
         return allTokens;
+    }
+
+
+    /**
+    * @dev Retrieves the list of token IDs owned by a specific user.
+    * @param owner The address of the user whose NFTs should be retrieved.
+    * @return uint256[] An array containing the token IDs owned by the user.
+    */
+    function getNFTsOfUser(address owner) external view returns (uint256[] memory) {
+        uint256 balance = balanceOf(owner);
+        uint256[] memory tokens = new uint256[](balance);
+        uint256 index = 0;
+
+        for (uint256 i = 0; i < allTokens.length; i++) {
+            uint256 tokenId = allTokens[i];
+            if (ownerOf(tokenId) == owner) {
+                tokens[index] = tokenId;
+                index++;
+            }
+        }
+        return tokens;
     }
 }

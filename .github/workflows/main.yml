@@ -25,7 +25,6 @@ jobs:
           git config --global user.email "aumas.quentin@gmail.com"
           git config --global user.name "Quentin Aumas"
           cd G-EIP-700-MPL-7-1-eip-quentin.aumas
-          mkdir smart-contract
           rm -rf smart-contract/*
           shopt -s extglob  # Activer extglob
           cp -R ../!(G-EIP-700-MPL-7-1-eip-quentin.aumas) smart-contract/

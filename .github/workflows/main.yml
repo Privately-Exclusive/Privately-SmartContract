@@ -1,0 +1,34 @@
+name: Update Back api in Parent Repo
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  update-parent:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Front Repo
+        uses: actions/checkout@v2
+
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.ACTIONS_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+
+      - name: Checkout Parent Repo using SSH
+        run: |
+          git clone git@github.com:EpitechPromo2026/G-EIP-700-MPL-7-1-eip-quentin.aumas.git
+          git config --global user.email "aumas.quentin@gmail.com"
+          git config --global user.name "Quentin Aumas"
+          cd G-EIP-700-MPL-7-1-eip-quentin.aumas
+          mkdir smart-contract
+          rm -rf smart-contract/*
+          shopt -s extglob  # Activer extglob
+          cp -R ../!(G-EIP-700-MPL-7-1-eip-quentin.aumas) smart-contract/
+          git add .
+          git commit -m "Update smart contract from main"
+          git push

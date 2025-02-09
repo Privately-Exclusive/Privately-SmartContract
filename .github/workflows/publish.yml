@@ -16,17 +16,30 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 22
 
-      - name: Install dependencies
+      - name: Compile and Deploy Smart Contract
+        run: |
+          npm install
+          npx hardhat compile
+          npx hardhat node &
+          NODE_PID=$!
+          while ! nc -z 127.0.0.1 8545; do sleep 1; done
+          npx hardhat run scripts/deploy.ts --network localhost
+          kill $NODE_PID
+
+      - name: Copy Artifact to Library
+        run: cp ./artifacts/contracts/PrivatelyToken.sol/PrivatelyNFT.json ./lib/
+
+      - name: Install dependencies for lib
         run: npm install
         working-directory: ./lib
 
-      - name: Build package
+      - name: Build library package
         run: npm run build
         working-directory: ./lib
 
-      - name: Pack package
+      - name: Pack library package
         run: npm pack
         working-directory: ./lib
 
@@ -34,6 +47,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
-          files: ./lib/*.tgz
+          files: |
+            ./lib/*.tgz
+            ./lib/PrivatelyNFT.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

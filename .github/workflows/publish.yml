@@ -11,10 +11,11 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -46,12 +47,39 @@ jobs:
         run: npm pack
         working-directory: ./lib
 
+      - name: Get latest Git tag
+        id: package_version
+        run: |
+          TAG=$(git describe --tags --abbrev=0 || echo "unversioned")
+          echo "VERSION=$TAG" >> $GITHUB_ENV
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: latest
+          tag_name: ${{ env.VERSION }}
           files: |
             ./lib/*.tgz
             ./lib/PrivatelyNFT.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Rename old latest tag
+        run: |
+          if git rev-parse latest >/dev/null 2>&1; then
+            OLD_VERSION=$(git describe --tags latest)
+            git tag -d $OLD_VERSION || true
+            git tag $OLD_VERSION $(git rev-parse latest)
+            git push origin :refs/tags/$OLD_VERSION || true
+            git push origin $OLD_VERSION
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update latest tag
+        run: |
+          git tag -d latest || true
+          git push origin :refs/tags/latest || true
+          git tag latest
+          git push origin latest
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

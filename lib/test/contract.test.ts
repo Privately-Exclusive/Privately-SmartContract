@@ -1,12 +1,7 @@
 import { expect } from "chai";
+import { describe, it, before } from "mocha";
 import { JsonRpcProvider, Wallet } from "ethers";
-import { before, describe } from "mocha";
 import { MintRequest, PrivatelyNFTClient, TransferRequest } from "../src";
-
-
-
-const ARTIFACT: object = require(process.env.PRIVATELY_NFT_ARTIFACT_PATH as string);
-
 
 
 const PROVIDER_URL = "http://127.0.0.1:8545/";
@@ -38,9 +33,9 @@ describe("PrivatelyNFTClient - Comprehensive Tests", function () {
         user1Wallet = new Wallet(USER1_PRIVATE_KEY, provider);
         user2Wallet = new Wallet(USER2_PRIVATE_KEY, provider);
 
-        relayerClient = new PrivatelyNFTClient(relayerWallet, ARTIFACT);
-        user1Client = new PrivatelyNFTClient(user1Wallet, ARTIFACT);
-        user2Client = new PrivatelyNFTClient(user2Wallet, ARTIFACT);
+        relayerClient = new PrivatelyNFTClient(relayerWallet);
+        user1Client = new PrivatelyNFTClient(user1Wallet);
+        user2Client = new PrivatelyNFTClient(user2Wallet);
 
         await relayerClient.init();
         await user1Client.init();

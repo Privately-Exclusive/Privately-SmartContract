@@ -1,42 +1,49 @@
 {
-  "name": "privately-smartcontract-lib",
-  "version": "1.0.0",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "scripts": {
-    "build": "tsc",
-    "test": "nyc mocha --require ts-node/register 'test/**/*.test.ts'"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
-  "devDependencies": {
-    "chai": "^5.1.2",
-    "mocha": "^10.8.2",
-    "nyc": "^17.1.0",
-    "ts-mocha": "^10.0.0",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.7.3"
-  },
-  "dependencies": {
-    "@ethersproject/signing-key": "^5.7.0",
-    "ethers": "^6.13.5"
-  },
-  "nyc": {
-    "extension": [
-      ".ts"
+    "name": "privately-smartcontract-lib",
+    "version": "1.0.0",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "scripts": {
+        "build": "tsc && cp PrivatelyNFT.json dist/",
+        "pretest": "cp PrivatelyNFT.json test/",
+        "test": "nyc mocha --require ts-node/register 'test/**/*.test.ts'"
+    },
+    "files": [
+        "dist",
+        "PrivatelyNFT.json"
     ],
-    "include": [
-      "src/**/*.ts"
-    ],
-    "exclude": [
-      "tests/**/*.ts"
-    ],
-    "reporter": [
-      "text"
-    ],
-    "all": true,
-    "check-coverage": true
-  }
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "description": "",
+    "devDependencies": {
+        "@types/chai": "^5.0.1",
+        "@types/mocha": "^10.0.10",
+        "chai": "^5.1.2",
+        "mocha": "^10.8.2",
+        "nyc": "^17.1.0",
+        "ts-mocha": "^10.0.0",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.7.3"
+    },
+    "dependencies": {
+        "@ethersproject/signing-key": "^5.7.0",
+        "ethers": "^6.13.5"
+    },
+    "nyc": {
+        "extension": [
+            ".ts"
+        ],
+        "include": [
+            "src/**/*.ts"
+        ],
+        "exclude": [
+            "tests/**/*.ts"
+        ],
+        "reporter": [
+            "text"
+        ],
+        "all": true,
+        "check-coverage": true
+    }
 }

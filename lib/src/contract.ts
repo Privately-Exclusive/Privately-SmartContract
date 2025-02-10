@@ -1,4 +1,5 @@
 import { BigNumberish, Contract, JsonRpcProvider, Signer, TransactionResponse, TypedDataDomain, TypedDataField } from "ethers";
+import ARTIFACT from '../PrivatelyNFT.json';
 
 
 /**
@@ -61,15 +62,14 @@ export class PrivatelyNFTClient {
     /**
      * Creates an instance of the PrivatelyNFTClient, linking it to a specific Signer.
      * @param signer A Signer object connected to an ethers provider.
-     * @param artifact The JSON artifact of the PrivatelyNFT contract.
      */
-    constructor(signer: Signer, artifact: any) {
+    constructor(signer: Signer) {
         this.signer = signer;
         this.provider = signer.provider as JsonRpcProvider;
-        this.contract = new Contract(CONTRACT_ADDRESS, artifact.abi, this.signer);
+        this.contract = new Contract(CONTRACT_ADDRESS, ARTIFACT.abi, this.signer);
 
         // Use the contract name from the artifact if available, otherwise fallback to "PrivatelyNFT".
-        const name: string = artifact.contractName;
+        const name: string = ARTIFACT.contractName;
 
         // Set up the default EIP-712 domain, with chainId to be updated in init().
         this.domain = {

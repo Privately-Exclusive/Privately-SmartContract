@@ -28,6 +28,6 @@ jobs:
           rm -rf smart-contract/*
           shopt -s extglob  # Activer extglob
           cp -R ../!(G-EIP-700-MPL-7-1-eip-quentin.aumas) smart-contract/
-          git add .
-          git commit -m "Update smart contract from main"
-          git push
+          git add . || true
+          git commit -m "Update smart contract from main" || true
+          git push || true

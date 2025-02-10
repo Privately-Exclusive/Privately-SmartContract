@@ -67,10 +67,12 @@ jobs:
         run: |
           if git rev-parse latest >/dev/null 2>&1; then
             OLD_VERSION=$(git describe --tags latest)
-            git tag -d $OLD_VERSION || true
-            git tag $OLD_VERSION $(git rev-parse latest)
-            git push origin :refs/tags/$OLD_VERSION || true
-            git push origin $OLD_VERSION
+            if [ "$OLD_VERSION" != "latest" ]; then
+              git tag -d $OLD_VERSION || true
+              git tag $OLD_VERSION $(git rev-parse latest)
+              git push origin :refs/tags/$OLD_VERSION || true
+              git push origin $OLD_VERSION
+            fi
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -4,4 +4,4 @@ services:
     container_name: hardhat-node
     ports:
       - "8545:8545"
-    command: [ "bash", "./docker/run_node.sh" ]
+    command: [ "bash", "./docker/run_prod_node.sh" ]

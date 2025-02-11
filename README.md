@@ -11,7 +11,7 @@ The smart contract and the associated TypeScript library support a meta-transact
 To start the Hardhat environment with the smart contract deployed inside, run:
 
 ```sh
-docker-compose up --build
+./run_prod_node.sh
 ```
 
 ### Tests
@@ -19,7 +19,7 @@ docker-compose up --build
 A test suite is available to verify the functionality of the smart contract and the TypeScript library. To run all unit tests for both the smart contract and the library, execute:
 
 ```sh
-docker-compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test-runner
+./run_tests.sh
 ```
 
 The tests include validations for:

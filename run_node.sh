@@ -1,3 +1,5 @@
+docker network create pscn || true
+
 docker compose -f docker-compose.yml up --build \
   --exit-code-from hardhat-node
 

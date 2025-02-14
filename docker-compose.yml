@@ -4,4 +4,10 @@ services:
     container_name: hardhat-node
     ports:
       - "8545:8545"
+    networks:
+      - pscn
     command: [ "bash", "./docker/run_prod_node.sh" ]
+
+networks:
+  pscn:
+    external: true

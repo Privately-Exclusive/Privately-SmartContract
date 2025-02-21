@@ -4,13 +4,15 @@
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
     "scripts": {
-        "build": "tsc && cp PrivatelyNFT.json dist/",
-        "pretest": "cp PrivatelyNFT.json test/",
+        "build": "tsc && cp PrivatelyAuctionSystem.json dist && cp PrivatelyCoin.json dist && cp PrivatelyCollection.json dist",
+        "pretest": "cp PrivatelyAuctionSystem.json test/ && cp PrivatelyCoin.json test/ && cp PrivatelyCollection.json test/",
         "test": "nyc mocha --require ts-node/register 'test/**/*.test.ts'"
     },
     "files": [
         "dist",
-        "PrivatelyNFT.json"
+        "PrivatelyAuctionSystem.json",
+        "PrivatelyCoin.json",
+        "PrivatelyCollection.json"
     ],
     "keywords": [],
     "author": "",
@@ -28,6 +30,7 @@
     },
     "dependencies": {
         "@ethersproject/signing-key": "^5.7.0",
+        "chai-as-promised": "^8.0.1",
         "ethers": "^6.13.5"
     },
     "nyc": {

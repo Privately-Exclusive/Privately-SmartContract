@@ -4,13 +4,29 @@ import { ethers } from "hardhat";
 
 async function main() {
     const [deployer] = await ethers.getSigners();
-    console.log("Deploying contract with account:", deployer.address);
+    console.log("Deployer account:", deployer.address);
 
-    const SimpleNFT = await ethers.getContractFactory("PrivatelyNFT");
-    const contract = await SimpleNFT.deploy("PrivatelyNFT", "PNFT");
-    await contract.waitForDeployment();
+    console.log("Deploying PrivatelyCoin contract...");
+    const PrivatelyCoin = await ethers.getContractFactory("PrivatelyCoin");
+    const privatelyCoinInstance = await PrivatelyCoin.deploy("PrivatelyCoin", "PRC");
+    await privatelyCoinInstance.waitForDeployment();
 
-    console.log("Contract deployed to address:", contract.target);
+    console.log("Deploying PrivatelyCollection contract...");
+    const PrivatelyCollection = await ethers.getContractFactory("PrivatelyCollection");
+    const privatelyCollectionInstance = await PrivatelyCollection.deploy("PrivatelyCollection", "PRX");
+    await privatelyCollectionInstance.waitForDeployment();
+
+    console.log("Deploying PrivatelyAuctionSystem contract...");
+    const PrivatelyAuctionSystem = await ethers.getContractFactory("PrivatelyAuctionSystem");
+    const auctionSystemContractInstance = await PrivatelyAuctionSystem.deploy(
+        privatelyCoinInstance.target,
+        privatelyCollectionInstance.target,
+        "PrivatelyAuctionSystem",
+        "1.0.0"
+    );
+    await auctionSystemContractInstance.waitForDeployment();
+
+    console.log("Deploying done!");
 }
 
 

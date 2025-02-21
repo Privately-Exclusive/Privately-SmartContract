@@ -33,7 +33,10 @@ jobs:
           kill $NODE_PID
 
       - name: Copy Artifact to Library
-        run: cp ./artifacts/contracts/PrivatelyToken.sol/PrivatelyNFT.json ./lib/
+        run: |
+          cp ./artifacts/contracts/PrivatelyCoin.sol/PrivatelyCoin.json ./lib/
+          cp ./artifacts/contracts/PrivatelyCollection.sol/PrivatelyCollection.json ./lib/
+          cp ./artifacts/contracts/PrivatelyAuctionSystem.sol/PrivatelyAuctionSystem.json ./lib/
 
       - name: Install dependencies for lib
         run: npm install

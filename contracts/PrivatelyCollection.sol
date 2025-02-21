@@ -1,12 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
+
+
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 
-contract PrivatelyNFT is ERC721URIStorage, EIP712 {
+
+
+/**
+ * @title PrivatelyCollection
+ * @dev ERC721 token with minting and transferring capabilities controlled by EIP-712 signed meta-transactions.
+ */
+contract PrivatelyCollection is ERC721URIStorage, EIP712 {
+
     using ECDSA for bytes32;
+
 
 
     /**
@@ -55,24 +65,47 @@ contract PrivatelyNFT is ERC721URIStorage, EIP712 {
 
 
 
-    // Typehash for EIP-712 mint requests
-    bytes32 private constant MINT_REQUEST_TYPEHASH =
-        keccak256("MintRequest(address user,string title,address author,string tokenURI,uint256 nonce)");
+    /**
+     * @dev Struct for EIP-712 signed approve requests.
+     * @param owner The address of the current owner of the NFT.
+     * @param spender The address being approved to manage the NFT.
+     * @param tokenId The unique identifier of the NFT.
+     * @param nonce A unique value to prevent replay attacks.
+     */
+    struct ApproveRequest {
+        address owner;
+        address spender;
+        uint256 tokenId;
+        uint256 nonce;
+    }
 
-    // Typehash for EIP-712 transfer requests
-    bytes32 private constant TRANSFER_REQUEST_TYPEHASH =
-        keccak256("TransferRequest(address from,address to,uint256 tokenId,uint256 nonce)");
+
+
+    bytes32 private constant MINT_REQUEST_TYPEHASH = keccak256(
+        "MintRequest(address user,string title,address author,string tokenURI,uint256 nonce)"
+    );
+    bytes32 private constant TRANSFER_REQUEST_TYPEHASH = keccak256(
+        "TransferRequest(address from,address to,uint256 tokenId,uint256 nonce)"
+    );
+    bytes32 private constant APPROVE_REQUEST_TYPEHASH = keccak256(
+        "ApproveRequest(address owner,address spender,uint256 tokenId,uint256 nonce)"
+    );
 
 
 
-    // Mapping to store internal data for each token ID
+    // Mapping to store internal data associated with each NFT
     mapping(uint256 => InsideData) private insideData;
 
-    // Array to store all token IDs
-    uint256[] private allTokens;
+    // Mapping for token nonces to prevent replay attacks
+    mapping(address => uint256) public mintNonces;
+    mapping(address => uint256) public transferNonces;
+    mapping(address => uint256) public approveNonces;
 
-    // Mapping to store nonces for each user to prevent replay attacks
-    mapping(address => uint256) public nonces;
+    // Array to store all token IDs
+    uint256[] private _allTokens;
+
+    // Counter to keep track of the total number of tokens minted
+    uint256 private _tokenCounter;
 
 
 
@@ -95,22 +128,20 @@ contract PrivatelyNFT is ERC721URIStorage, EIP712 {
      * @param tokenURI The URI pointing to the NFT's metadata.
      * @param signature The EIP-712 signature from the user authorizing the mint.
      */
-    function mintGaslessNFT(
+    function metaMint(
         address user,
         string calldata title,
         string calldata tokenURI,
         bytes calldata signature
-    ) external {
-        // Create a MintRequest struct
+    ) external returns (uint256) {
         MintRequest memory request = MintRequest(
             user,
             title,
             user,
             tokenURI,
-            nonces[user]
+            mintNonces[user]
         );
 
-        // Hash the request data using EIP-712
         bytes32 digest = _hashTypedDataV4(
             keccak256(abi.encode(
                 MINT_REQUEST_TYPEHASH,
@@ -122,16 +153,16 @@ contract PrivatelyNFT is ERC721URIStorage, EIP712 {
             ))
         );
 
-        // Recover the signer's address from the signature
         address signer = digest.recover(signature);
         require(signer == user, "Invalid signature");
 
-        // Increment the user's nonce to prevent replay attacks
-        nonces[user]++;
+        mintNonces[user]++;
 
-        // Generate a unique token ID and mint the NFT
-        uint256 tokenId = uint256(keccak256(abi.encodePacked(user, block.timestamp, title)));
+        uint256 tokenId = uint256(keccak256(abi.encodePacked(user, block.timestamp, title, _tokenCounter)));
+        _tokenCounter++;
         _mintAndStore(user, tokenId, title, user, tokenURI);
+
+        return tokenId;
     }
 
 
@@ -143,16 +174,14 @@ contract PrivatelyNFT is ERC721URIStorage, EIP712 {
      * @param tokenId The unique identifier of the NFT to be transferred.
      * @param signature The EIP-712 signature from the current owner authorizing the transfer.
      */
-    function transferGasless(
+    function metaTransfer(
         address from,
         address to,
         uint256 tokenId,
         bytes calldata signature
     ) external {
-        // Create a TransferRequest struct
-        TransferRequest memory request = TransferRequest(from, to, tokenId, nonces[from]);
+        TransferRequest memory request = TransferRequest(from, to, tokenId, transferNonces[from]);
 
-        // Hash the request data using EIP-712
         bytes32 digest = _hashTypedDataV4(
             keccak256(abi.encode(
                 TRANSFER_REQUEST_TYPEHASH,
@@ -163,16 +192,54 @@ contract PrivatelyNFT is ERC721URIStorage, EIP712 {
             ))
         );
 
-        // Recover the signer's address from the signature
         address signer = digest.recover(signature);
         require(signer == from, "Invalid signature");
         require(ownerOf(tokenId) == from, "Not the owner");
 
-        // Increment the user's nonce to prevent replay attacks
-        nonces[from]++;
+        transferNonces[from]++;
 
-        // Transfer the NFT
         _transfer(from, to, tokenId);
+    }
+
+
+
+    /**
+     * @dev Executes a gasless NFT approval via EIP-712 signature.
+     * @param owner The current owner of the NFT.
+     * @param spender The address to be approved to manage the NFT.
+     * @param tokenId The unique identifier of the NFT.
+     * @param signature The EIP-712 signature from the owner authorizing the approval.
+     */
+    function metaApprove(
+        address owner,
+        address spender,
+        uint256 tokenId,
+        bytes calldata signature
+    ) external {
+        uint256 currentNonce = approveNonces[owner];
+        ApproveRequest memory request = ApproveRequest(
+            owner,
+            spender,
+            tokenId,
+            currentNonce
+        );
+
+        bytes32 digest = _hashTypedDataV4(
+            keccak256(abi.encode(
+                APPROVE_REQUEST_TYPEHASH,
+                request.owner,
+                request.spender,
+                request.tokenId,
+                request.nonce
+            ))
+        );
+
+        address signer = digest.recover(signature);
+        require(signer == owner, "Invalid signature");
+        require(ownerOf(tokenId) == owner, "Not the owner");
+
+        approveNonces[owner]++;
+        _approve(spender, tokenId, owner);
     }
 
 
@@ -192,13 +259,10 @@ contract PrivatelyNFT is ERC721URIStorage, EIP712 {
         address author,
         string memory tokenURI
     ) internal {
-        // Store the internal data for the NFT
         insideData[tokenId] = InsideData(title, author);
 
-        // Add the token ID to the list of all tokens
-        allTokens.push(tokenId);
+        _allTokens.push(tokenId);
 
-        // Mint the NFT and set its metadata URI
         _mint(to, tokenId);
         _setTokenURI(tokenId, tokenURI);
     }
@@ -217,30 +281,33 @@ contract PrivatelyNFT is ERC721URIStorage, EIP712 {
 
 
     /**
-    * @dev Retrieves the complete metadata of an NFT including title, author, and tokenURI.
-    * @param tokenId The unique identifier of the NFT.
-    * @return title The title associated with the NFT.
-    * @return author The author associated with the NFT.
-    * @return tokenURI_ The URI pointing to the NFT's metadata.
-    */
-    function getData(uint256 tokenId) external view returns (string memory title, address author, string memory tokenURI_) {
+     * @dev Retrieves the complete metadata of an NFT including title, author, and tokenURI.
+     * @param tokenId The unique identifier of the NFT.
+     * @return title The title associated with the NFT.
+     * @return author The author associated with the NFT.
+     * @return uri The URI pointing to the NFT's metadata.
+     */
+    function getData(uint256 tokenId) external view returns (string memory title, address author, string memory uri) {
         require(_exists(tokenId), "Token does not exist");
         InsideData memory data = insideData[tokenId];
         title = data.title;
         author = data.author;
-        tokenURI_ = tokenURI(tokenId);
+        uri = tokenURI(tokenId);
     }
 
 
 
-
     /**
-    * @dev Retrieves the current nonce for a given user address.
-    * @param user The address of the user.
-    * @return uint256 The current nonce of the user.
-    */
-    function getNonce(address user) external view returns (uint256) {
-        return nonces[user];
+     * @dev Retrieves the current nonces for mint, transfer, and approve requests.
+     * @param user The address of the user.
+     * @return mintNonce The current mint nonce.
+     * @return transferNonce The current transfer nonce.
+     * @return approveNonce The current approve nonce.
+     */
+    function getNonces(address user) external view returns (uint256 mintNonce, uint256 transferNonce, uint256 approveNonce) {
+        mintNonce = mintNonces[user];
+        transferNonce = transferNonces[user];
+        approveNonce = approveNonces[user];
     }
 
 
@@ -249,23 +316,24 @@ contract PrivatelyNFT is ERC721URIStorage, EIP712 {
      * @dev Retrieves all token IDs in the contract.
      * @return uint256[] A list of all token IDs.
      */
-    function getAllNFTs() external view returns (uint256[] memory) {
-        return allTokens;
+    function getAllCollection() external view returns (uint256[] memory) {
+        return _allTokens;
     }
 
 
+
     /**
-    * @dev Retrieves the list of token IDs owned by a specific user.
-    * @param owner The address of the user whose NFTs should be retrieved.
-    * @return uint256[] An array containing the token IDs owned by the user.
-    */
-    function getNFTsOfUser(address owner) external view returns (uint256[] memory) {
+     * @dev Retrieves the list of token IDs owned by a specific user.
+     * @param owner The address of the user whose Collection should be retrieved.
+     * @return uint256[] An array containing the token IDs owned by the user.
+     */
+    function getCollectionOfUser(address owner) external view returns (uint256[] memory) {
         uint256 balance = balanceOf(owner);
         uint256[] memory tokens = new uint256[](balance);
         uint256 index = 0;
 
-        for (uint256 i = 0; i < allTokens.length; i++) {
-            uint256 tokenId = allTokens[i];
+        for (uint256 i = 0; i < _allTokens.length; i++) {
+            uint256 tokenId = _allTokens[i];
             if (ownerOf(tokenId) == owner) {
                 tokens[index] = tokenId;
                 index++;

@@ -24,67 +24,39 @@ jobs:
 
       - name: Compile and Deploy Smart Contract
         run: |
-          npm install
+          npm ci --prefer-offline
           npx hardhat compile
           npx hardhat node &
           NODE_PID=$!
+          trap "kill $NODE_PID" EXIT
           while ! nc -z 127.0.0.1 8545; do sleep 1; done
           npx hardhat run scripts/deploy.ts --network localhost
-          kill $NODE_PID
 
-      - name: Copy Artifact to Library
+      - name: Copy Artifacts
         run: |
-          cp ./artifacts/contracts/PrivatelyCoin.sol/PrivatelyCoin.json ./lib/
-          cp ./artifacts/contracts/PrivatelyCollection.sol/PrivatelyCollection.json ./lib/
-          cp ./artifacts/contracts/PrivatelyAuctionSystem.sol/PrivatelyAuctionSystem.json ./lib/
+          cp ./artifacts/contracts/{PrivatelyCoin,PrivatelyCollection,PrivatelyAuctionSystem}.sol/*.json ./lib/
 
-      - name: Install dependencies for lib
-        run: npm install
+      - name: Prepare Library Package
         working-directory: ./lib
-
-      - name: Build library package
-        run: npm run build
-        working-directory: ./lib
-
-      - name: Pack library package
-        run: npm pack
-        working-directory: ./lib
-
-      - name: Get latest Git tag
-        id: package_version
         run: |
-          TAG=$(git describe --tags --abbrev=0 || echo "unversioned")
-          echo "VERSION=$TAG" >> $GITHUB_ENV
+          npm ci --production
+          npm run build
+          npm pack
+
+      - name: Extract Package Version
+        id: version
+        run: |
+          VERSION=$(jq -r .version ./lib/package.json | sed 's/^v//')
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "TAG=v${VERSION}" >> $GITHUB_ENV
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ env.VERSION }}
+          tag_name: ${{ env.TAG }}
+          name: ${{ env.TAG }}
+          body: ''
           files: |
             ./lib/*.tgz
-            ./lib/PrivatelyNFT.json
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Rename old latest tag
-        run: |
-          if git rev-parse latest >/dev/null 2>&1; then
-            OLD_VERSION=$(git describe --tags latest)
-            if [ "$OLD_VERSION" != "latest" ]; then
-              git tag -d $OLD_VERSION || true
-              git tag $OLD_VERSION $(git rev-parse latest)
-              git push origin :refs/tags/$OLD_VERSION || true
-              git push origin $OLD_VERSION
-            fi
-          fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Update latest tag
-        run: |
-          git tag -d latest || true
-          git push origin :refs/tags/latest || true
-          git tag latest
-          git push origin latest
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

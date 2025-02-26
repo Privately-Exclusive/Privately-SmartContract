@@ -1,4 +1,4 @@
-import { Block, Network, Signer } from "ethers";
+import { Block, Network, Signer, TransactionResponse } from "ethers";
 import { PrivatelyError } from "./common/privately.error";
 import { PrivatelyAuctionSystemClient } from "./modules/auctions/auctions.client";
 import { PrivatelyCoinClient } from "./modules/coin/coin.client";
@@ -68,5 +68,15 @@ export class PrivatelyClient {
      */
     public getAddress(): Promise<string> {
         return this.signer.getAddress();
+    }
+
+
+    /**
+     * Fetches a transaction by its hash.
+     * @param txHash The hash of the transaction to fetch.
+     * @returns The transaction if found, otherwise null.
+     */
+    public async getTransaction(txHash: string): Promise<TransactionResponse | null> {
+        return (await this.signer.provider?.getTransaction(txHash)) ?? null;
     }
 }

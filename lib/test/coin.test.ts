@@ -120,7 +120,9 @@ export const coinTests = function () {
             );
 
             const tx = await relayerClient.coin.relayTransferRequest(request, signature);
-            await tx.wait();
+            const transaction = await relayerClient.getTransaction(tx.hash);
+            expect(transaction).to.not.be.null;
+            await transaction!.wait();
 
             expect(await user1Client.coin.getBalance()).to.equal(initialBalance - 100n);
         });

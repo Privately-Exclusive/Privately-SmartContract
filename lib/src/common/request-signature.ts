@@ -26,4 +26,20 @@ export class RequestSignature<T> {
         this.signature = signature;
         this.request = request;
     }
+
+
+    public static deserialize<T>(json: string): RequestSignature<T> {
+        const parsed = JSON.parse(json, (key, value) => {
+            if (typeof value === "string" && value.endsWith("n"))
+                return BigInt(value.slice(0, -1));
+            return value;
+        });
+        return new RequestSignature<T>(parsed.type, parsed.signature, parsed.request);
+    }
+
+
+    public serialize(): string {
+        return JSON.stringify(this, (key, value) =>
+            typeof value === "bigint" ? value.toString() + "n" : value);
+    }
 }

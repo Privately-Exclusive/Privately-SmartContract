@@ -1,16 +1,12 @@
-import { BigNumberish } from "ethers";
-
-
-
 export class PrivatelyNFT {
-    id: BigNumberish;
+    id: bigint;
     title: string;
     author: string;
     url: string;
 
 
     constructor(
-        id: BigNumberish,
+        id: bigint,
         title: string,
         author: string,
         url: string
@@ -22,8 +18,8 @@ export class PrivatelyNFT {
     }
 
 
-    public static async map(list: BigNumberish[], client: any): Promise<PrivatelyNFT[]> {
-        return await Promise.all(list.map(async (id: BigNumberish) => {
+    public static async map(list: bigint[], client: any): Promise<PrivatelyNFT[]> {
+        return await Promise.all(list.map(async (id: bigint) => {
             return await client.getData(id);
         }));
     }

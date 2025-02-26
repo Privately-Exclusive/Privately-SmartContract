@@ -7,7 +7,7 @@ export interface CollectionMintRequest {
     title: string;
     author: string;
     tokenURI: string;
-    nonce: number;
+    nonce: bigint;
 }
 
 

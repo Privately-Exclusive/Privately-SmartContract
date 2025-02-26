@@ -1,4 +1,4 @@
 export interface CoinNonces {
-    transferNonce: number;
-    approveNonce: number;
+    transferNonce: bigint;
+    approveNonce: bigint;
 }

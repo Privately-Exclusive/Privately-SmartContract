@@ -1,4 +1,4 @@
-import { BigNumberish, Contract, Network, Signer, TransactionResponse, TypedDataDomain } from "ethers";
+import { Contract, Network, Signer, TransactionResponse, TypedDataDomain } from "ethers";
 
 import AUCTION_SYSTEM_ARTIFACT from "../../../PrivatelyAuctionSystem.json";
 import { RequestSignature, RequestType } from "../../common/request-signature";
@@ -56,9 +56,9 @@ export class PrivatelyAuctionSystemClient {
      * @returns An object containing the request struct and its signature.
      */
     public async createAuctionRequest(
-        tokenId: BigNumberish,
-        startPrice: BigNumberish,
-        endTime: BigNumberish
+        tokenId: bigint,
+        startPrice: bigint,
+        endTime: bigint
     ): Promise<RequestSignature<CreateAuctionRequest>> {
         const seller = await this.signer.getAddress();
         const nonce = (await this.getNonces(seller)).createAuctionNonce;
@@ -113,8 +113,8 @@ export class PrivatelyAuctionSystemClient {
      * @returns An object containing the bid request struct and its signature.
      */
     public async createBidRequest(
-        auctionId: BigNumberish,
-        bidAmount: BigNumberish
+        auctionId: bigint,
+        bidAmount: bigint
     ): Promise<RequestSignature<BidAuctionRequest>> {
         const bidder = await this.signer.getAddress();
         const nonce = (await this.getNonces(bidder)).bidNonce;
@@ -166,7 +166,7 @@ export class PrivatelyAuctionSystemClient {
      * @returns A TransactionResponse.
      */
     public async finalizeAuction(
-        auctionId: BigNumberish
+        auctionId: bigint
     ): Promise<TransactionResponse> {
         try {
             return await this.contract.finalizeAuction(auctionId);
@@ -247,7 +247,7 @@ export class PrivatelyAuctionSystemClient {
      * @param auctionId The ID of the auction to fetch.
      * @returns An Auction object.
      */
-    public async getAuction(auctionId: BigNumberish): Promise<Auction> {
+    public async getAuction(auctionId: bigint): Promise<Auction> {
         try {
             const auction = await this.contract.getAuction(auctionId);
             return new Auction(

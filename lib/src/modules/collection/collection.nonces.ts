@@ -1,5 +1,5 @@
 export interface CollectionNonces {
-    mintNonce: number;
-    transferNonce: number;
-    approveNonce: number;
+    mintNonce: bigint;
+    transferNonce: bigint;
+    approveNonce: bigint;
 }

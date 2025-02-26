@@ -6,7 +6,7 @@ export interface CoinTransferRequest {
     from: string;
     to: string;
     amount: bigint;
-    nonce: number;
+    nonce: bigint;
 }
 
 

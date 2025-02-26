@@ -35,7 +35,7 @@ export const auctionSystemTests = function () {
     let user3Client: PrivatelyClient;
     let user3Address: string;
 
-    let auctionId: BigNumberish;
+    let auctionId: bigint;
     let auctionEndTime: number;
 
 
@@ -61,7 +61,7 @@ export const auctionSystemTests = function () {
 
 
     describe("Auction Creation", function () {
-        let tokenId: BigNumberish;
+        let tokenId: bigint;
 
 
         it("USER1 should create a mint request and RELAYER should mint the tokens", async function () {
@@ -107,7 +107,7 @@ export const auctionSystemTests = function () {
             const contractAddress = relayerClient.auctions.getContractAddress();
 
             const {request: approveRequest, signature: approveSignature} = await user1Client.collection.createApproveRequest(contractAddress, tokenId);
-            const {request: auctionRequest, signature: auctionSignature} = await user1Client.auctions.createAuctionRequest(tokenId, 10n, auctionEndTime);
+            const {request: auctionRequest, signature: auctionSignature} = await user1Client.auctions.createAuctionRequest(tokenId, 10n, BigInt(auctionEndTime));
 
             const approveTx = await relayerClient.collection.relayApproveRequest(approveRequest, approveSignature);
             await approveTx.wait(1);
@@ -123,7 +123,7 @@ export const auctionSystemTests = function () {
             auctionEndTime = currentTime + 90;
 
             const {request: approveRequest, signature: approveSignature} = await user1Client.collection.createApproveRequest(contractAddress, tokenId);
-            const {request: auctionRequest, signature: auctionSignature} = await user1Client.auctions.createAuctionRequest(tokenId, 10n, auctionEndTime);
+            const {request: auctionRequest, signature: auctionSignature} = await user1Client.auctions.createAuctionRequest(tokenId, 10n, BigInt(auctionEndTime));
 
             const approveTx = await relayerClient.collection.relayApproveRequest(approveRequest, approveSignature);
             await approveTx.wait(1);

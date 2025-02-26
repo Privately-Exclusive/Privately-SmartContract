@@ -1,26 +1,22 @@
-import { BigNumberish } from "ethers";
-
-
-
 export class Auction {
-    id: BigNumberish;
+    id: bigint;
     seller: string;
-    tokenId: BigNumberish;
-    startPrice: BigNumberish;
-    highestBid: BigNumberish;
+    tokenId: bigint;
+    startPrice: bigint;
+    highestBid: bigint;
     highestBidder: string;
-    endTime: BigNumberish;
+    endTime: bigint;
     settled: boolean;
 
 
     constructor(
-        id: BigNumberish,
+        id: bigint,
         seller: string,
-        tokenId: BigNumberish,
-        startPrice: BigNumberish,
-        highestBid: BigNumberish,
+        tokenId: bigint,
+        startPrice: bigint,
+        highestBid: bigint,
         highestBidder: string,
-        endTime: BigNumberish,
+        endTime: bigint,
         settled: boolean
     ) {
         this.id = id;
@@ -35,8 +31,8 @@ export class Auction {
 
 
 
-    public static async map(list: BigNumberish[], client: any): Promise<Auction[]> {
-        return await Promise.all(list.map(async (id: BigNumberish) => {
+    public static async map(list: bigint[], client: any): Promise<Auction[]> {
+        return await Promise.all(list.map(async (id: bigint) => {
             return await client.getAuction(id);
         }));
     }

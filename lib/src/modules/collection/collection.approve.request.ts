@@ -1,12 +1,12 @@
-import { BigNumberish, TypedDataField } from "ethers";
+import { TypedDataField } from "ethers";
 
 
 
 export interface CollectionApproveRequest {
     owner: string;
     spender: string;
-    tokenId: BigNumberish;
-    nonce: number;
+    tokenId: bigint;
+    nonce: bigint;
 }
 
 

@@ -1,12 +1,8 @@
-import { BigNumberish } from "ethers";
-
-
-
 export interface BidAuctionRequest {
     bidder: string;
-    auctionId: BigNumberish;
-    bidAmount: BigNumberish;
-    nonce: BigNumberish;
+    auctionId: bigint;
+    bidAmount: bigint;
+    nonce: bigint;
 }
 
 

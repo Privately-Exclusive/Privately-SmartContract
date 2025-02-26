@@ -1,13 +1,9 @@
-import { BigNumberish } from "ethers";
-
-
-
 export interface CreateAuctionRequest {
     seller: string;
-    tokenId: BigNumberish;
-    startPrice: BigNumberish;
-    endTime: BigNumberish;
-    nonce: BigNumberish;
+    tokenId: bigint;
+    startPrice: bigint;
+    endTime: bigint;
+    nonce: bigint;
 }
 
 

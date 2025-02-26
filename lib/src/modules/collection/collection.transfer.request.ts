@@ -1,12 +1,8 @@
-import { BigNumberish } from "ethers";
-
-
-
 export interface CollectionTransferRequest {
     from: string;
     to: string;
-    tokenId: BigNumberish;
-    nonce: number;
+    tokenId: bigint;
+    nonce: bigint;
 }
 
 

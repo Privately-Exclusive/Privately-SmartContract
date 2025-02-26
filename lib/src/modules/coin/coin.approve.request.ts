@@ -5,7 +5,7 @@ export interface CoinApproveRequest {
     owner: string;
     spender: string;
     amount: bigint;
-    nonce: number;
+    nonce: bigint;
 }
 
 

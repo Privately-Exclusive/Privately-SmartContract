@@ -1,4 +1,4 @@
-import { BigNumberish, Contract, Network, Signer, TransactionResponse, TypedDataDomain } from "ethers";
+import { Contract, Network, Signer, TransactionResponse, TypedDataDomain } from "ethers";
 
 import COLLECTION_ARTIFACT from "../../../PrivatelyCollection.json";
 import { RequestSignature, RequestType } from "../../common/request-signature";
@@ -88,7 +88,7 @@ export class PrivatelyCollectionClient {
      * @param tokenId The ID of the NFT (as BigNumberish).
      * @returns A PrivatelyNFT object containing the NFT's metadata.
      */
-    public async getData(tokenId: BigNumberish): Promise<PrivatelyNFT> {
+    public async getData(tokenId: bigint): Promise<PrivatelyNFT> {
         try {
             const data = await this.contract.getData(tokenId);
             return new PrivatelyNFT(tokenId, data.title, data.author, data.uri);
@@ -165,7 +165,7 @@ export class PrivatelyCollectionClient {
      */
     public async createTransferRequest(
         to: string,
-        tokenId: BigNumberish
+        tokenId: bigint
     ): Promise<RequestSignature<CollectionTransferRequest>> {
         const from = await this.signer.getAddress();
         const nonce = (await this.getNonces()).transferNonce;
@@ -218,7 +218,7 @@ export class PrivatelyCollectionClient {
      */
     public async createApproveRequest(
         spender: string,
-        tokenId: BigNumberish
+        tokenId: bigint
     ): Promise<RequestSignature<CollectionApproveRequest>> {
         const owner = await this.signer.getAddress();
         const nonce = (await this.getNonces()).approveNonce;

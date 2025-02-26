@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { BigNumberish, JsonRpcProvider, Wallet } from "ethers";
+import { JsonRpcProvider, Wallet } from "ethers";
 import { before, describe, it } from "mocha";
 import { CollectionMintRequest, CollectionTransferRequest, PrivatelyClient } from "../src";
 import { CollectionApproveRequest } from "../src/modules/collection/collection.approve.request";
@@ -171,7 +171,7 @@ export const collectionTests = function () {
     });
 
     describe("Transfer Functions", function () {
-        let transferTokenId: BigNumberish;
+        let transferTokenId: bigint;
         let transferRequest: CollectionTransferRequest;
         let transferSignature: string;
 
@@ -226,7 +226,7 @@ export const collectionTests = function () {
     });
 
     describe("Meta Approval Functions", function () {
-        let approvalTokenId: BigNumberish;
+        let approvalTokenId: bigint;
         let approvalRequest: CollectionApproveRequest;
         let approvalSignature: string;
 
@@ -262,7 +262,7 @@ export const collectionTests = function () {
     });
 
     describe("Ping pong transfer 5 times", function () {
-        let transferTokenId: BigNumberish;
+        let transferTokenId: bigint;
 
         before(async function () {
             this.timeout(10_000);
@@ -278,7 +278,7 @@ export const collectionTests = function () {
         });
 
 
-        async function transferNFT(from: PrivatelyClient, to: PrivatelyClient, tokenId: BigNumberish): Promise<void> {
+        async function transferNFT(from: PrivatelyClient, to: PrivatelyClient, tokenId: bigint): Promise<void> {
             const toAddress = await to.signer.getAddress();
             const {request, signature} = await from.collection.createTransferRequest(toAddress, tokenId);
             expect(request).to.be.an("object");
@@ -291,7 +291,7 @@ export const collectionTests = function () {
         }
 
 
-        async function ensureNFTOwnership(client: PrivatelyClient, tokenId: BigNumberish, title: string) {
+        async function ensureNFTOwnership(client: PrivatelyClient, tokenId: bigint, title: string) {
             const collection = await client.collection.getCollection();
             expect(collection.map(x => x.id)).to.include(tokenId);
 

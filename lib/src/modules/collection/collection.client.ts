@@ -1,7 +1,7 @@
 import { BigNumberish, Contract, Network, Signer, TransactionResponse, TypedDataDomain } from "ethers";
 
 import COLLECTION_ARTIFACT from "../../../PrivatelyCollection.json";
-import { RequestSignature } from "../../common/request-signature";
+import { RequestSignature, RequestType } from "../../common/request-signature";
 import { COLLECTION_APPROVE_REQUEST_TYPE, CollectionApproveRequest } from "./collection.approve.request";
 import { CollectionError } from "./collection.errors";
 import { COLLECTION_MINT_REQUEST_TYPE, CollectionMintRequest } from "./collection.mint.request";
@@ -128,7 +128,7 @@ export class PrivatelyCollectionClient {
             COLLECTION_MINT_REQUEST_TYPE,
             request
         );
-        return {request, signature};
+        return {type: RequestType.COLLECTION_MINT, request, signature};
     }
 
 
@@ -182,7 +182,7 @@ export class PrivatelyCollectionClient {
             COLLECTION_TRANSFER_REQUEST_TYPE,
             request
         );
-        return {request, signature};
+        return {type: RequestType.COLLECTION_TRANSFER, request, signature};
     }
 
 
@@ -235,7 +235,7 @@ export class PrivatelyCollectionClient {
             COLLECTION_APPROVE_REQUEST_TYPE,
             request
         );
-        return {request, signature};
+        return {type: RequestType.COLLECTION_APPROVE, request, signature};
     }
 
 
@@ -248,7 +248,7 @@ export class PrivatelyCollectionClient {
      */
     public async relayApproveRequest(
         request: CollectionApproveRequest,
-        signature: string,
+        signature: string
     ): Promise<TransactionResponse> {
         try {
             return await this.contract.metaApprove(

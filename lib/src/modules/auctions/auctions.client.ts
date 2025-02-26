@@ -1,7 +1,7 @@
 import { BigNumberish, Contract, Network, Signer, TransactionResponse, TypedDataDomain } from "ethers";
 
 import AUCTION_SYSTEM_ARTIFACT from "../../../PrivatelyAuctionSystem.json";
-import { RequestSignature } from "../../common/request-signature";
+import { RequestSignature, RequestType } from "../../common/request-signature";
 import { Auction } from "./auctions.auction";
 import { AUCTIONS_BID_REQUEST_TYPE, BidAuctionRequest } from "./auctions.bid.reqest";
 import { AUCTIONS_CREATE_REQUEST_TYPE, CreateAuctionRequest } from "./auctions.create.request";
@@ -77,7 +77,7 @@ export class PrivatelyAuctionSystemClient {
             request
         );
 
-        return {request, signature};
+        return { type: RequestType.AUCTION_CREATE, request, signature};
     }
 
 
@@ -132,7 +132,7 @@ export class PrivatelyAuctionSystemClient {
             request
         );
 
-        return {request, signature};
+        return {type: RequestType.AUCTION_BID, request, signature};
     }
 
 

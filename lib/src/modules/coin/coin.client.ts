@@ -1,7 +1,7 @@
 import { Contract, Network, Signer, TransactionResponse, TypedDataDomain } from "ethers";
 
 import COIN_ARTIFACT from "../../../PrivatelyCoin.json";
-import { RequestSignature } from "../../common/request-signature";
+import { RequestSignature, RequestType } from "../../common/request-signature";
 import { APPROVE_REQUEST_TYPE, CoinApproveRequest } from "./coin.approve.request";
 import { CoinError } from "./coin.errors";
 import { CoinNonces } from "./coin.nonces";
@@ -70,7 +70,7 @@ export class PrivatelyCoinClient {
             TRANSFER_REQUEST_TYPE,
             request
         );
-        return {request, signature};
+        return {type: RequestType.COIN_TRANSFER, request, signature};
     }
 
 
@@ -123,7 +123,7 @@ export class PrivatelyCoinClient {
             request
         );
 
-        return {request, signature};
+        return {type: RequestType.COIN_APPROVE, request, signature};
     }
 
 

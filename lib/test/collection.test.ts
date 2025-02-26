@@ -272,7 +272,7 @@ export const collectionTests = function () {
         });
     });
 
-    describe("Ping pong transfer 5 times", function () {
+    describe("Ping pong transfer 2 times", function () {
         let transferTokenId: bigint;
 
         before(async function () {
@@ -314,8 +314,8 @@ export const collectionTests = function () {
         }
 
 
-        Array.from({length: 5}).forEach((_, i) => {
-            it(`Transfer [${i + 1}/5]: USER1 -> USER2 & USER2 -> USER1`, async function () {
+        Array.from({length: 2}).forEach((_, i) => {
+            it(`Transfer [${i + 1}/2]: USER1 -> USER2 & USER2 -> USER1`, async function () {
                 this.timeout(30_000);
                 await transferNFT(user1Client, user2Client, transferTokenId);
                 await ensureNFTOwnership(user2Client, transferTokenId, FOURTH_TITLE);

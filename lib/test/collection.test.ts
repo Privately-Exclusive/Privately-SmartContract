@@ -31,9 +31,9 @@ export const collectionTests = function () {
         const user1Wallet = new Wallet(USER1_PRIVATE_KEY, provider);
         const user2Wallet = new Wallet(USER2_PRIVATE_KEY, provider);
 
-        relayerClient = await PrivatelyClient.Create(relayerWallet);
-        user1Client = await PrivatelyClient.Create(user1Wallet);
-        user2Client = await PrivatelyClient.Create(user2Wallet);
+        relayerClient = await PrivatelyClient.create(relayerWallet);
+        user1Client = await PrivatelyClient.create(user1Wallet);
+        user2Client = await PrivatelyClient.create(user2Wallet);
     });
 
     describe("Minting Functions", function () {

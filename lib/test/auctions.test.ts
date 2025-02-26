@@ -51,10 +51,10 @@ export const auctionSystemTests = function () {
         const user3Wallet = new Wallet(USER3_PRIVATE_KEY, provider);
         user3Address = user3Wallet.address;
 
-        relayerClient = await PrivatelyClient.Create(relayerWallet);
-        user1Client = await PrivatelyClient.Create(user1Wallet);
-        user2Client = await PrivatelyClient.Create(user2Wallet);
-        user3Client = await PrivatelyClient.Create(user3Wallet);
+        relayerClient = await PrivatelyClient.create(relayerWallet);
+        user1Client = await PrivatelyClient.create(user1Wallet);
+        user2Client = await PrivatelyClient.create(user2Wallet);
+        user3Client = await PrivatelyClient.create(user3Wallet);
 
         contractAddress = relayerClient.auctions.getContractAddress();
     });

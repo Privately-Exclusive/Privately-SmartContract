@@ -30,7 +30,7 @@ export class PrivatelyClient {
      * @returns A new PrivatelyClient instance.
      * @constructor
      */
-    public static async Create(signer: Signer): Promise<PrivatelyClient> {
+    public static async create(signer: Signer): Promise<PrivatelyClient> {
         if (!signer.provider) throw new Error("Signer must be connected to a provider.");
         const network = await signer.provider.getNetwork();
         return new PrivatelyClient(signer, network);

@@ -99,7 +99,6 @@ export const coinTests = function () {
     describe("Meta-Transactions", function () {
         it("USER1 should create valid transfer request", async function () {
             const request = await user1Client.coin.createTransferRequest(
-                user1Address,
                 user2Address,
                 100n
             );
@@ -114,7 +113,6 @@ export const coinTests = function () {
 
             const initialBalance = await user1Client.coin.getBalance();
             const {request, signature} = await user1Client.coin.createTransferRequest(
-                user1Address,
                 user2Address,
                 100n
             );
@@ -129,7 +127,6 @@ export const coinTests = function () {
 
         it("Should reject invalid signatures", async function () {
             const {request} = await user1Client.coin.createTransferRequest(
-                user1Address,
                 user2Address,
                 100n
             );
@@ -140,7 +137,6 @@ export const coinTests = function () {
 
         it("Should prevent nonce reuse", async function () {
             const {request, signature} = await user1Client.coin.createTransferRequest(
-                user1Address,
                 user2Address,
                 50n
             );
@@ -233,17 +229,6 @@ export const coinTests = function () {
         it("Should validate user balances", async function () {
             expect(await user1Client.coin.getUserBalance(user2Address))
                 .to.equal(await user2Client.coin.getBalance());
-        });
-
-        it("Should reject mismatched meta-transfer sender", async function () {
-            const {request, signature} = await user1Client.coin.createTransferRequest(
-                relayerAddress,
-                user2Address,
-                100n
-            );
-
-            await expect(relayerClient.coin.relayTransferRequest(request, signature))
-                .to.be.rejectedWith(CoinError);
         });
     });
 };

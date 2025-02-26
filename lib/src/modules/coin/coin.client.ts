@@ -47,16 +47,15 @@ export class PrivatelyCoinClient {
 
     /**
      * Creates a signed transfer request for meta-transaction execution
-     * @param from Sender address
      * @param to Recipient address
      * @param amount Token amount to transfer
      * @returns Promise containing transfer request and EIP-712 signature
      */
     public async createTransferRequest(
-        from: string,
         to: string,
         amount: bigint
     ): Promise<RequestSignature<CoinTransferRequest>> {
+        const from = await this.signer.getAddress();
         const nonce = (await this.getNonces()).transferNonce;
 
         const request: CoinTransferRequest = {

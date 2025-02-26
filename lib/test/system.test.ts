@@ -38,7 +38,6 @@ export const systemTests = function () {
 
     it("should create a request, serialize it, and deserialize it", async () => {
         const request = await user1Client.coin.createTransferRequest(
-            await user1Client.getAddress(),
             await user2Client.getAddress(),
             100n
         );

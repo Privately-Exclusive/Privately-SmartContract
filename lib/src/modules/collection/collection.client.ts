@@ -128,7 +128,7 @@ export class PrivatelyCollectionClient {
             COLLECTION_MINT_REQUEST_TYPE,
             request
         );
-        return {type: RequestType.COLLECTION_MINT, request, signature};
+        return {type: RequestType.COLLECTION_MINT, request, signature} as RequestSignature<CollectionMintRequest>;
     }
 
 
@@ -182,7 +182,7 @@ export class PrivatelyCollectionClient {
             COLLECTION_TRANSFER_REQUEST_TYPE,
             request
         );
-        return {type: RequestType.COLLECTION_TRANSFER, request, signature};
+        return {type: RequestType.COLLECTION_TRANSFER, request, signature} as RequestSignature<CollectionTransferRequest>;
     }
 
 
@@ -235,7 +235,7 @@ export class PrivatelyCollectionClient {
             COLLECTION_APPROVE_REQUEST_TYPE,
             request
         );
-        return {type: RequestType.COLLECTION_APPROVE, request, signature};
+        return {type: RequestType.COLLECTION_APPROVE, request, signature} as RequestSignature<CollectionApproveRequest>;
     }
 
 

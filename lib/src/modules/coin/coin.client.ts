@@ -70,7 +70,7 @@ export class PrivatelyCoinClient {
             TRANSFER_REQUEST_TYPE,
             request
         );
-        return {type: RequestType.COIN_TRANSFER, request, signature};
+        return {type: RequestType.COIN_TRANSFER, request, signature} as RequestSignature<CoinTransferRequest>;
     }
 
 
@@ -123,7 +123,7 @@ export class PrivatelyCoinClient {
             request
         );
 
-        return {type: RequestType.COIN_APPROVE, request, signature};
+        return {type: RequestType.COIN_APPROVE, request, signature} as RequestSignature<CoinApproveRequest>;
     }
 
 

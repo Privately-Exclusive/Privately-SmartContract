@@ -77,7 +77,7 @@ export class PrivatelyAuctionSystemClient {
             request
         );
 
-        return {type: RequestType.AUCTION_CREATE, request, signature} as RequestSignature<CreateAuctionRequest>;
+        return new RequestSignature<CreateAuctionRequest>(RequestType.AUCTION_CREATE, signature, request);
     }
 
 
@@ -132,7 +132,7 @@ export class PrivatelyAuctionSystemClient {
             request
         );
 
-        return {type: RequestType.AUCTION_BID, request, signature} as RequestSignature<BidAuctionRequest>;
+        return new RequestSignature<BidAuctionRequest>(RequestType.AUCTION_BID, signature, request);
     }
 
 

@@ -2,6 +2,7 @@ import { expect } from "chai";
 import { JsonRpcProvider, Wallet } from "ethers";
 import { before, describe, it } from "mocha";
 import { CollectionMintRequest, CollectionTransferRequest, PrivatelyClient } from "../src";
+import { RequestType } from "../src/common/request-signature";
 import { CollectionApproveRequest } from "../src/modules/collection/collection.approve.request";
 
 
@@ -46,8 +47,11 @@ export const collectionTests = function () {
 
             startNftCount = (await user1Client.collection.getCollection()).length;
 
-            ({request: mintRequest, signature: mintSignature} =
-                await user1Client.collection.createMintRequest(FIRST_TITLE, "url_" + FIRST_TITLE));
+            const request = await user1Client.collection.createMintRequest(FIRST_TITLE, "url_" + FIRST_TITLE);
+            expect(request.type).to.equal(RequestType.COLLECTION_MINT);
+
+            mintRequest = request.request;
+            mintSignature = request.signature;
 
             expect(mintRequest).to.be.an("object");
             expect(mintSignature).to.be.a("string");
@@ -193,8 +197,11 @@ export const collectionTests = function () {
             this.timeout(1_000);
 
             const user2Address = await user2Client.signer.getAddress();
-            ({request: transferRequest, signature: transferSignature} =
-                await user1Client.collection.createTransferRequest(user2Address, transferTokenId));
+            const request = await user1Client.collection.createTransferRequest(user2Address, transferTokenId);
+            expect(request.type).to.equal(RequestType.COLLECTION_TRANSFER);
+
+            transferRequest = request.request;
+            transferSignature = request.signature;
 
             expect(transferRequest).to.be.an("object");
             expect(transferSignature).to.be.a("string");
@@ -245,8 +252,12 @@ export const collectionTests = function () {
         it("USER1 should create a valid approve request for USER2", async function () {
             this.timeout(1_000);
             const user2Address = await user2Client.signer.getAddress();
-            ({request: approvalRequest, signature: approvalSignature} =
-                await user1Client.collection.createApproveRequest(user2Address, approvalTokenId));
+            const request = await user1Client.collection.createApproveRequest(user2Address, approvalTokenId);
+            expect(request.type).to.equal(RequestType.COLLECTION_APPROVE);
+
+            approvalRequest = request.request;
+            approvalSignature = request.signature;
+
             expect(approvalRequest).to.be.an("object");
             expect(approvalSignature).to.be.a("string");
         });

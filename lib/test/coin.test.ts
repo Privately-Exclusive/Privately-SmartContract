@@ -3,6 +3,7 @@ import chaiAsPromised from "chai-as-promised";
 import { JsonRpcProvider, Wallet } from "ethers";
 import { before, describe, it } from "mocha";
 import { PrivatelyClient } from "../src";
+import { RequestType } from "../src/common/request-signature";
 import { CoinError } from "../src/modules/coin/coin.errors";
 
 
@@ -97,14 +98,15 @@ export const coinTests = function () {
 
     describe("Meta-Transactions", function () {
         it("USER1 should create valid transfer request", async function () {
-            const {request} = await user1Client.coin.createTransferRequest(
+            const request = await user1Client.coin.createTransferRequest(
                 user1Address,
                 user2Address,
                 100n
             );
+            expect(request.type).to.equal(RequestType.COIN_TRANSFER);
 
-            expect(request.from).to.equal(user1Address);
-            expect(request.amount).to.equal(100n);
+            expect(request.request.from).to.equal(user1Address);
+            expect(request.request.amount).to.equal(100n);
         });
 
         it("RELAYER should process valid transfer request", async function () {
@@ -188,13 +190,14 @@ export const coinTests = function () {
 
     describe("Meta-Approvals", function () {
         it("USER3 should create valid approval request", async function () {
-            const {request} = await user3Client.coin.createApproveRequest(
+            const request = await user3Client.coin.createApproveRequest(
                 relayerAddress,
                 500n
             );
+            expect(request.type).to.equal(RequestType.COIN_APPROVE);
 
-            expect(request.spender).to.equal(relayerAddress);
-            expect(request.amount).to.equal(500n);
+            expect(request.request.spender).to.equal(relayerAddress);
+            expect(request.request.amount).to.equal(500n);
         });
 
         it("RELAYER should process valid approval request", async function () {

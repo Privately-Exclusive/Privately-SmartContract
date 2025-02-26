@@ -1,8 +1,9 @@
 import chai, { expect } from "chai";
 import chaiAsPromised from "chai-as-promised";
-import { BigNumberish, JsonRpcProvider, Wallet } from "ethers";
+import { JsonRpcProvider, Wallet } from "ethers";
 import { before, describe } from "mocha";
 import { PrivatelyClient } from "../src";
+import { RequestType } from "../src/common/request-signature";
 
 
 
@@ -24,16 +25,9 @@ export const auctionSystemTests = function () {
     let contractAddress: string;
 
     let relayerClient: PrivatelyClient;
-    let relayerAddress: string;
-
     let user1Client: PrivatelyClient;
-    let user1Address: string;
-
     let user2Client: PrivatelyClient;
-    let user2Address: string;
-
     let user3Client: PrivatelyClient;
-    let user3Address: string;
 
     let auctionId: bigint;
     let auctionEndTime: number;
@@ -43,13 +37,9 @@ export const auctionSystemTests = function () {
         const provider = new JsonRpcProvider(PROVIDER_URL);
 
         const relayerWallet = new Wallet(RELAYER_PRIVATE_KEY, provider);
-        relayerAddress = relayerWallet.address;
         const user1Wallet = new Wallet(USER1_PRIVATE_KEY, provider);
-        user1Address = user1Wallet.address;
         const user2Wallet = new Wallet(USER2_PRIVATE_KEY, provider);
-        user2Address = user2Wallet.address;
         const user3Wallet = new Wallet(USER3_PRIVATE_KEY, provider);
-        user3Address = user3Wallet.address;
 
         relayerClient = await PrivatelyClient.create(relayerWallet);
         user1Client = await PrivatelyClient.create(user1Wallet);
@@ -67,8 +57,8 @@ export const auctionSystemTests = function () {
         it("USER1 should create a mint request and RELAYER should mint the tokens", async function () {
             this.timeout(15_000);
 
-            const {request, signature} = await user1Client.collection.createMintRequest(FIRST_TITLE, "url_" + FIRST_TITLE);
-            const tx = await relayerClient.collection.relayMintRequest(request, signature);
+            const requestSignature = await user1Client.collection.createMintRequest(FIRST_TITLE, "url_" + FIRST_TITLE);
+            const tx = await relayerClient.collection.relayMintRequest(requestSignature.request, requestSignature.signature);
             await tx.wait(1);
 
             const userCollection = await user1Client.collection.getCollection();
@@ -85,15 +75,15 @@ export const auctionSystemTests = function () {
         it("RELAYER should mint PrivatelyCoins for all users", async function () {
             this.timeout(30_000);
 
-            const tx1 = await relayerClient.coin.mint(user1Address, 100n);
+            const tx1 = await relayerClient.coin.mint(await user1Client.getAddress(), 100n);
             await tx1.wait();
             expect(await user1Client.coin.getBalance()).to.equal(100n);
 
-            const tx2 = await relayerClient.coin.mint(user2Address, 200n);
+            const tx2 = await relayerClient.coin.mint(await user2Client.getAddress(), 200n);
             await tx2.wait();
             expect(await user2Client.coin.getBalance()).to.equal(200n);
 
-            const tx3 = await relayerClient.coin.mint(user3Address, 700n);
+            const tx3 = await relayerClient.coin.mint(await user3Client.getAddress(), 700n);
             await tx3.wait();
             expect(await user3Client.coin.getBalance()).to.equal(700n);
         });
@@ -106,13 +96,14 @@ export const auctionSystemTests = function () {
             const auctionEndTime = currentTime + 60 * 60 * 24 * 8;
             const contractAddress = relayerClient.auctions.getContractAddress();
 
-            const {request: approveRequest, signature: approveSignature} = await user1Client.collection.createApproveRequest(contractAddress, tokenId);
-            const {request: auctionRequest, signature: auctionSignature} = await user1Client.auctions.createAuctionRequest(tokenId, 10n, BigInt(auctionEndTime));
+            const approveRequest = await user1Client.collection.createApproveRequest(contractAddress, tokenId);
+            const createAuctionRequest = await user1Client.auctions.createAuctionRequest(tokenId, 10n, BigInt(auctionEndTime));
+            expect(createAuctionRequest.type).to.equal(RequestType.AUCTION_CREATE);
 
-            const approveTx = await relayerClient.collection.relayApproveRequest(approveRequest, approveSignature);
+            const approveTx = await relayerClient.collection.relayApproveRequest(approveRequest.request, approveRequest.signature);
             await approveTx.wait(1);
 
-            await expect(relayerClient.auctions.relayCreateAuctionRequest(auctionRequest, auctionSignature)).to.be.rejectedWith(/End time must be within 7 days/);
+            await expect(relayerClient.auctions.relayCreateAuctionRequest(createAuctionRequest.request, createAuctionRequest.signature)).to.be.rejectedWith(/End time must be within 7 days/);
         });
 
 
@@ -173,8 +164,9 @@ export const auctionSystemTests = function () {
             const approveTx = await relayerClient.coin.relayApproveRequest(approveRequest, approveSignature);
             await approveTx.wait(1);
 
-            const {request: bidRequest, signature: bidSignature} = await user2Client.auctions.createBidRequest(auctionId, 9n);
-            await expect(relayerClient.auctions.relayBidRequest(bidRequest, bidSignature)).to.be.rejectedWith(/Bid below start price/);
+            const bidRequest = await user2Client.auctions.createBidRequest(auctionId, 9n);
+            expect(bidRequest.type).to.equal(RequestType.AUCTION_BID);
+            await expect(relayerClient.auctions.relayBidRequest(bidRequest.request, bidRequest.signature)).to.be.rejectedWith(/Bid below start price/);
         });
 
         it("USER2 should bid on the auction and RELAYER should relay the bid", async function () {

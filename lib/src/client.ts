@@ -1,8 +1,8 @@
 import { Block, Network, Signer, TransactionResponse } from "ethers";
-import { PrivatelyError } from "./common/privately.error";
-import { PrivatelyAuctionSystemClient } from "./modules/auctions/auctions.client";
-import { PrivatelyCoinClient } from "./modules/coin/coin.client";
-import { PrivatelyCollectionClient } from "./modules/collection/collection.client";
+import { PrivatelyError } from "./common";
+import { PrivatelyAuctionSystemClient } from "./modules/auctions";
+import { PrivatelyCoinClient } from "./modules/coin";
+import { PrivatelyCollectionClient } from "./modules/collection";
 
 
 
@@ -28,7 +28,6 @@ export class PrivatelyClient {
      * Creates a new PrivatelyClient instance using the provided signer.
      * @param signer The signer to use for transactions.
      * @returns A new PrivatelyClient instance.
-     * @constructor
      */
     public static async create(signer: Signer): Promise<PrivatelyClient> {
         if (!signer.provider) throw new Error("Signer must be connected to a provider.");

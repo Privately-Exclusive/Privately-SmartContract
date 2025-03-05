@@ -1,3 +1,5 @@
+name: Build and deploy documentation of privately-docs-lib
+
 on:
   workflow_run:
     workflows: [ "CI" ]
@@ -34,3 +36,23 @@ jobs:
 
       - name: Logout from GitHub Container Registry
         run: docker logout ghcr.io
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: deploy on serveur
+        uses: appleboy/ssh-action@v1.1.0
+        env:
+          SECRET_GITHUB: ${{ secrets.GHCR_PAT }}
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          envs: SECRET_GITHUB
+          script: |
+            echo $SECRET_GITHUB | sudo docker login ghcr.io -u quentinams --password-stdin
+            ls
+            cd ./documentation
+            sudo docker compose pull 
+            sudo docker compose up -d

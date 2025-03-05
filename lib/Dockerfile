@@ -5,7 +5,7 @@ FROM nginx:alpine
 COPY ./docs /usr/share/nginx/html
 
 # Exposer le port 80
-EXPOSE 80
+EXPOSE 3000
 
 # Commande par défaut pour démarrer Nginx
 CMD ["nginx", "-g", "daemon off;"]

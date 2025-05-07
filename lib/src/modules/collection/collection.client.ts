@@ -1,9 +1,10 @@
-import { Contract, Network, Signer, TransactionResponse, TypedDataDomain } from "ethers";
+import { Contract, Log, Network, Signer, TransactionResponse, TypedDataDomain } from "ethers";
 
 import COLLECTION_ARTIFACT from "../../../PrivatelyCollection.json";
 import { RequestSignature, RequestType } from "../../common/request-signature";
 import { COLLECTION_APPROVE_REQUEST_TYPE, CollectionApproveRequest } from "./collection.approve.request";
 import { CollectionError } from "./collection.errors";
+import { OnMintListener, OnTransferListener } from "./collection.events";
 import { COLLECTION_MINT_REQUEST_TYPE, CollectionMintRequest } from "./collection.mint.request";
 import { PrivatelyNFT } from "./collection.nft";
 import { CollectionNonces } from "./collection.nonces";
@@ -260,6 +261,44 @@ export class PrivatelyCollectionClient {
         } catch (error) {
             throw CollectionError.from(error, this.contract);
         }
+    }
+
+
+    /**
+     * Registers a listener for the "OnMint" event emitted by the contract.
+     * @param listener A callback function to be executed when the "OnMint" event is triggered.
+     */
+    public onMintEvent(listener: OnMintListener): void {
+        void this.contract.on(
+            "OnMint",
+            (to: string, amount: bigint, event: Log) => {
+                listener(to, amount, event);
+            }
+        );
+    }
+
+
+    /**
+     * Subscribes a listener to the "OnTransfer" event emitted by the contract.
+     * @param listener A callback function to be executed when the "OnTransfer" event is triggered.
+     */
+    public onTransferEvent(listener: OnTransferListener): void {
+        void this.contract.on(
+            "OnTransfer",
+            (
+                from: string,
+                to: string,
+                amount: bigint,
+                event: Log
+            ) => {
+                listener(
+                    from,
+                    to,
+                    amount,
+                    event
+                );
+            }
+        );
     }
 
 

@@ -251,9 +251,12 @@ contract PrivatelyCoin is ERC20, AccessControl, EIP712 {
         super._update(from, to, amount);
 
         if (from == address(0)) {
+            // Mint
             emit OnMint(to, amount, balanceOf(to));
         } else if (to == address(0)) {
+            // Burn -> intentionally no custom event
         } else {
+            // Transfer
             emit OnTransfer(from, to, amount, balanceOf(from), balanceOf(to));
         }
     }

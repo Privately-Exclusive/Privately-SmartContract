@@ -19,6 +19,34 @@ contract PrivatelyCollection is ERC721URIStorage, EIP712 {
 
 
 
+    // -- Events --
+
+    /**
+     * @dev Emitted when a new NFT is minted.
+     * @param to               Recipient address receiving the minted token.
+     * @param tokenId          Identifier of the token that was minted.
+     */
+    event OnMint(
+        address indexed to,
+        uint256 tokenId
+    );
+
+
+
+    /**
+     * @dev Emitted when an NFT is transferred.
+     * @param from             Sender address.
+     * @param to               Recipient address.
+     * @param tokenId          Identifier of the token that was transferred.
+     */
+    event OnTransfer(
+        address indexed from,
+        address indexed to,
+        uint256 tokenId
+    );
+
+
+
     /**
      * @dev Struct to store internal data associated with an NFT.
      * @param title The title of the NFT.
@@ -30,6 +58,8 @@ contract PrivatelyCollection is ERC721URIStorage, EIP712 {
     }
 
 
+
+    // -- Requests --
 
     /**
      * @dev Struct for EIP-712 signed mint requests.
@@ -120,6 +150,8 @@ contract PrivatelyCollection is ERC721URIStorage, EIP712 {
     {}
 
 
+
+    // -- Functions --
 
     /**
      * @dev Mints an NFT using a gasless transaction (meta-transaction).
@@ -340,5 +372,45 @@ contract PrivatelyCollection is ERC721URIStorage, EIP712 {
             }
         }
         return tokens;
+    }
+
+
+
+    // -- Overrides --
+
+    /**
+     * @dev Internal update hook that funnels every ownership change (mint, transfer,
+     *      burn) through a single code path.
+     *      By emitting `OnMint` and `OnTransfer` here **after** calling `super._update`,
+     *      we guarantee that no ERC‑721 operation can modify balances without
+     *      triggering the corresponding custom event.
+     *
+     * @param to     Address that will own `tokenId` after the operation (`address(0)` on burn).
+     * @param tokenId Token id being moved.
+     * @param auth   Caller that triggered the change (msg.sender or approved operator),
+     *               passed through unchanged to the parent implementation.
+     *
+     * @return from  The previous owner address (zero on mint).
+     */
+    function _update(
+        address to,
+        uint256 tokenId,
+        address auth
+    ) internal override returns (address from) {
+        from = super._update(to, tokenId, auth);
+
+        if (from == address(0)) {
+            // Mint
+            emit OnMint(to, tokenId);
+        } else if (to == address(0)) {
+            // Burn -> intentionally no custom event
+        } else {
+            // Standard transfer
+            emit OnTransfer(
+                from,
+                to,
+                tokenId
+            );
+        }
     }
 }

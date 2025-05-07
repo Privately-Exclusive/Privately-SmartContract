@@ -280,21 +280,12 @@ export class PrivatelyCoinClient {
     }
 
 
-
     /**
      * Registers a listener for the "OnMint" event emitted by the contract.
-     *
      * @param listener A callback function to be executed when the "OnMint" event is triggered.
-     * The listener receives the following parameters:
-     * - `to`: The address to which the assets are minted (string).
-     * - `amount`: The amount of assets minted (bigint).
-     * - `finalBalance`: The final balance of the recipient after minting (bigint).
-     * - `event`: The full log event object containing additional metadata (Log).
-     *
-     * @return void
      */
     public onMintEvent(listener: OnMintListener): void {
-        this.contract.on(
+        void this.contract.on(
             "OnMint",
             (to: string, amount: bigint, finalBalance: bigint, event: Log) => {
                 listener(to, amount, finalBalance, event);
@@ -305,18 +296,10 @@ export class PrivatelyCoinClient {
 
     /**
      * Subscribes a listener to the "OnTransfer" event emitted by the contract.
-     *
-     * @param listener - A callback function to handle the "OnTransfer" event. The listener receives the following parameters:
-     *   - from: The address of the sender in the transfer.
-     *   - to: The address of the recipient in the transfer.
-     *   - amount: The amount transferred, represented as a bigint.
-     *   - fromFinalBalance: The final balance of the sender after the transfer, represented as a bigint.
-     *   - toFinalBalance: The final balance of the recipient after the transfer, represented as a bigint.
-     *   - event: An object containing the event log details.
-     * @return void
+     * @param listener A callback function to be executed when the "OnTransfer" event is triggered.
      */
     public onTransferEvent(listener: OnTransferListener): void {
-        this.contract.on(
+        void this.contract.on(
             "OnTransfer",
             (
                 from: string,
@@ -337,7 +320,6 @@ export class PrivatelyCoinClient {
             }
         );
     }
-
 
 
     /**

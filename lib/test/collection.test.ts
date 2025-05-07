@@ -325,4 +325,94 @@ export const collectionTests = function () {
             });
         });
     });
+
+    describe("Events", function () {
+
+        it("Should trigger OnMint listener when an NFT is minted", async function () {
+            this.timeout(20_000);
+
+            const mintTitle = "Events – Mint NFT";
+            const mintTokenURI = "url_events_mint";
+            const user1Address = await user1Client.getAddress();
+
+            // Promesse résolue lorsque le bon évènement est capturé
+            const mintEventReceived = new Promise<void>((resolve, reject) => {
+                const listener = (to: string, amount: bigint) => {
+                    // On ignore les éventuels évènements parasites
+                    if (to !== user1Address) return;
+
+                    try {
+                        expect(to).to.equal(user1Address);
+                        expect(amount).to.be.a("bigint");
+                        relayerClient.collection.contract.off("OnMint", listener);
+                        resolve();
+                    } catch (err) {
+                        relayerClient.collection.contract.off("OnMint", listener);
+                        reject(err);
+                    }
+                };
+
+                relayerClient.collection.onMintEvent(listener);
+            });
+
+            // USER1 crée puis RELAYER relaie la requête de mint
+            const { request, signature } = await user1Client.collection.createMintRequest(
+                mintTitle,
+                mintTokenURI
+            );
+            const tx = await relayerClient.collection.relayMintRequest(request, signature);
+            await tx.wait();
+
+            await mintEventReceived; // Attente de la résolution de la promesse
+        });
+
+        it("Should trigger OnTransfer listener when an NFT is transferred", async function () {
+            this.timeout(30_000);
+
+            const transferTitle = "Events – Transfer NFT";
+            const transferTokenURI = "url_events_transfer";
+            const user1Address = await user1Client.getAddress();
+            const user2Address = await user2Client.getAddress();
+
+            /* Étape 1 : mint d’un NFT pour disposer d’un token à transférer */
+            const { request: mintReq, signature: mintSig } =
+                await user1Client.collection.createMintRequest(transferTitle, transferTokenURI);
+            const mintTx = await relayerClient.collection.relayMintRequest(mintReq, mintSig);
+            await mintTx.wait();
+
+            // Récupération du tokenId nouvellement minté
+            const user1Collection = await user1Client.collection.getCollection();
+            const tokenId = user1Collection[user1Collection.length - 1].id;
+
+            /* Étape 2 : préparation du listener avant l’envoi du transfert */
+            const transferEventReceived = new Promise<void>((resolve, reject) => {
+                const listener = (from: string, to: string, amount: bigint) => {
+                    if (from !== user1Address || to !== user2Address || amount !== tokenId) return;
+
+                    try {
+                        expect(from).to.equal(user1Address);
+                        expect(to).to.equal(user2Address);
+                        expect(amount).to.equal(tokenId);
+                        relayerClient.collection.contract.off("OnTransfer", listener);
+                        resolve();
+                    } catch (err) {
+                        relayerClient.collection.contract.off("OnTransfer", listener);
+                        reject(err);
+                    }
+                };
+
+                relayerClient.collection.onTransferEvent(listener);
+            });
+
+            /* Étape 3 : USER1 crée puis RELAYER relaie la requête de transfert */
+            const { request: transferReq, signature: transferSig } =
+                await user1Client.collection.createTransferRequest(user2Address, tokenId);
+            const transferTx =
+                await relayerClient.collection.relayTransferRequest(transferReq, transferSig);
+            await transferTx.wait();
+
+            await transferEventReceived; // Attente que l’évènement soit capturé
+        });
+    });
+
 };

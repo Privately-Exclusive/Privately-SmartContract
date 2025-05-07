@@ -20,6 +20,42 @@ contract PrivatelyCoin is ERC20, AccessControl, EIP712 {
 
 
 
+    // -- Events --
+
+    /**
+    * @dev Emitted when new tokens are minted.
+    * @param to Recipient address receiving minted tokens.
+    * @param amount Amount of tokens minted.
+    * @param finalBalance Final token balance of the recipient after minting.
+    */
+    event OnMint(
+        address indexed to,
+        uint256 amount,
+        uint256 finalBalance
+    );
+
+
+
+    /**
+    * @dev Emitted when tokens are transferred.
+    * @param from Sender address.
+    * @param to Recipient address.
+    * @param amount Amount of tokens transferred.
+    * @param fromFinalBalance Final balance of the sender after transfer.
+    * @param toFinalBalance Final balance of the recipient after transfer.
+    */
+    event OnTransfer(
+        address indexed from,
+        address indexed to,
+        uint256 amount,
+        uint256 fromFinalBalance,
+        uint256 toFinalBalance
+    );
+
+
+
+    // -- Requests --
+
     /**
      * @dev Struct for EIP-712 signed approval requests
      * @param owner Address granting the allowance
@@ -87,6 +123,8 @@ contract PrivatelyCoin is ERC20, AccessControl, EIP712 {
     }
 
 
+
+    // -- Functions --
 
     /**
      * @dev Mints new tokens
@@ -188,5 +226,35 @@ contract PrivatelyCoin is ERC20, AccessControl, EIP712 {
     function getNonces(address user) external view returns (uint256 transferNonce, uint256 approveNonce) {
         transferNonce = transferNonces[user];
         approveNonce = approveNonces[user];
+    }
+
+
+
+    // -- Overrides --
+
+    /**
+     * @dev Internal update hook that centralizes all balance modifications
+     *      (minting, transferring, burning) into a single function call.
+     *      By overriding this method, we guarantee that our custom events
+     *      OnMint and OnTransfer are emitted on every token mint or transfer,
+     *      and cannot be bypassed by any ERC20 operation.
+     *
+     * @param from   Address from which tokens are debited (zero address for mint).
+     * @param to     Address to which tokens are credited (zero address for burn).
+     * @param amount Number of tokens to move.
+     */
+    function _update(
+        address from,
+        address to,
+        uint256 amount
+    ) internal virtual override {
+        super._update(from, to, amount);
+
+        if (from == address(0)) {
+            emit OnMint(to, amount, balanceOf(to));
+        } else if (to == address(0)) {
+        } else {
+            emit OnTransfer(from, to, amount, balanceOf(from), balanceOf(to));
+        }
     }
 }

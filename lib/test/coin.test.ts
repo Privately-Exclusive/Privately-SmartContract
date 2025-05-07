@@ -1,6 +1,6 @@
 import chai, { expect } from "chai";
 import chaiAsPromised from "chai-as-promised";
-import { JsonRpcProvider, Wallet } from "ethers";
+import { JsonRpcProvider, Log, Wallet } from "ethers";
 import { before, describe, it } from "mocha";
 import { PrivatelyClient } from "../src";
 import { RequestType } from "../src/common/request-signature";
@@ -231,4 +231,79 @@ export const coinTests = function () {
                 .to.equal(await user2Client.coin.getBalance());
         });
     });
+
+    describe("Events", function () {
+
+        it("Should trigger OnMint listener when tokens are minted", async function () {
+            this.timeout(20_000);
+
+            const amountToMint = 42n;
+
+            const mintEventReceived = new Promise<void>((resolve, reject) => {
+                const listener = (
+                    to: string,
+                    amount: bigint,
+                    _finalBalance: bigint,
+                    event: Log
+                ) => {
+                    if (amount !== amountToMint) {
+                        return;
+                    }
+                    try {
+                        expect(to).to.equal(relayerAddress);
+                        expect(amount).to.equal(amountToMint);
+                        relayerClient.coin.contract.off("OnMint", listener);
+                        resolve();
+                    } catch (err) {
+                        relayerClient.coin.contract.off("OnMint", listener);
+                        reject(err);
+                    }
+                };
+
+                relayerClient.coin.onMintEvent(listener);
+            });
+
+            const tx = await relayerClient.coin.mint(relayerAddress, amountToMint);
+            await tx.wait();
+
+            await mintEventReceived;
+        });
+
+        it("Should trigger OnTransfer listener when tokens are transferred", async function () {
+            this.timeout(20_000);
+
+            const amountToTransfer = 7n;
+
+            const transferEventReceived = new Promise<void>((resolve, reject) => {
+                const listener = (
+                    from: string,
+                    to: string,
+                    amount: bigint,
+                    _fromFinalBalance: bigint,
+                    _toFinalBalance: bigint
+                ) => {
+                    if (amount !== amountToTransfer || to !== user1Address) {
+                        return;
+                    }
+                    try {
+                        expect(from).to.equal(relayerAddress);
+                        expect(amount).to.equal(amountToTransfer);
+                        relayerClient.coin.contract.off("OnTransfer", listener);
+                        resolve();
+                    } catch (err) {
+                        relayerClient.coin.contract.off("OnTransfer", listener);
+                        reject(err);
+                    }
+                };
+
+                relayerClient.coin.onTransferEvent(listener);
+            });
+
+            const tx = await relayerClient.coin.transfer(user1Address, amountToTransfer);
+            await tx.wait();
+
+            await transferEventReceived;
+        });
+    });
+
 };

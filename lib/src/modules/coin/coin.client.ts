@@ -1,9 +1,10 @@
-import { Contract, Network, Signer, TransactionResponse, TypedDataDomain } from "ethers";
+import { Contract, Log, Network, Signer, TransactionResponse, TypedDataDomain } from "ethers";
 
 import COIN_ARTIFACT from "../../../PrivatelyCoin.json";
 import { RequestSignature, RequestType } from "../../common/request-signature";
 import { APPROVE_REQUEST_TYPE, CoinApproveRequest } from "./coin.approve.request";
 import { CoinError } from "./coin.errors";
+import { OnMintListener, OnTransferListener } from "./coin.events";
 import { CoinNonces } from "./coin.nonces";
 import { CoinTransferRequest, TRANSFER_REQUEST_TYPE } from "./coin.transfer.request";
 
@@ -277,6 +278,66 @@ export class PrivatelyCoinClient {
         const selfAddress = await this.signer.getAddress();
         return this.getUserBalance(selfAddress);
     }
+
+
+
+    /**
+     * Registers a listener for the "OnMint" event emitted by the contract.
+     *
+     * @param listener A callback function to be executed when the "OnMint" event is triggered.
+     * The listener receives the following parameters:
+     * - `to`: The address to which the assets are minted (string).
+     * - `amount`: The amount of assets minted (bigint).
+     * - `finalBalance`: The final balance of the recipient after minting (bigint).
+     * - `event`: The full log event object containing additional metadata (Log).
+     *
+     * @return void
+     */
+    public onMintEvent(listener: OnMintListener): void {
+        this.contract.on(
+            "OnMint",
+            (to: string, amount: bigint, finalBalance: bigint, event: Log) => {
+                listener(to, amount, finalBalance, event);
+            }
+        );
+    }
+
+
+    /**
+     * Subscribes a listener to the "OnTransfer" event emitted by the contract.
+     *
+     * @param listener - A callback function to handle the "OnTransfer" event. The listener receives the following parameters:
+     *   - from: The address of the sender in the transfer.
+     *   - to: The address of the recipient in the transfer.
+     *   - amount: The amount transferred, represented as a bigint.
+     *   - fromFinalBalance: The final balance of the sender after the transfer, represented as a bigint.
+     *   - toFinalBalance: The final balance of the recipient after the transfer, represented as a bigint.
+     *   - event: An object containing the event log details.
+     * @return void
+     */
+    public onTransferEvent(listener: OnTransferListener): void {
+        this.contract.on(
+            "OnTransfer",
+            (
+                from: string,
+                to: string,
+                amount: bigint,
+                fromFinalBalance: bigint,
+                toFinalBalance: bigint,
+                event: Log
+            ) => {
+                listener(
+                    from,
+                    to,
+                    amount,
+                    fromFinalBalance,
+                    toFinalBalance,
+                    event
+                );
+            }
+        );
+    }
+
 
 
     /**

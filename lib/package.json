@@ -6,7 +6,7 @@
     "scripts": {
         "build": "tsc && cp PrivatelyAuctionSystem.json dist && cp PrivatelyCoin.json dist && cp PrivatelyCollection.json dist",
         "pretest": "cp PrivatelyAuctionSystem.json test/ && cp PrivatelyCoin.json test/ && cp PrivatelyCollection.json test/",
-        "test": "nyc mocha --require ts-node/register 'test/**/*.test.ts'"
+        "test": "nyc mocha --exit --require ts-node/register 'test/**/*.test.ts'"
     },
     "files": [
         "dist",

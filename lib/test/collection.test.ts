@@ -335,10 +335,8 @@ export const collectionTests = function () {
             const mintTokenURI = "url_events_mint";
             const user1Address = await user1Client.getAddress();
 
-            // Promesse résolue lorsque le bon évènement est capturé
             const mintEventReceived = new Promise<void>((resolve, reject) => {
                 const listener = (to: string, amount: bigint) => {
-                    // On ignore les éventuels évènements parasites
                     if (to !== user1Address) return;
 
                     try {
@@ -355,7 +353,6 @@ export const collectionTests = function () {
                 relayerClient.collection.onMintEvent(listener);
             });
 
-            // USER1 crée puis RELAYER relaie la requête de mint
             const { request, signature } = await user1Client.collection.createMintRequest(
                 mintTitle,
                 mintTokenURI
@@ -363,7 +360,7 @@ export const collectionTests = function () {
             const tx = await relayerClient.collection.relayMintRequest(request, signature);
             await tx.wait();
 
-            await mintEventReceived; // Attente de la résolution de la promesse
+            await mintEventReceived;
         });
 
         it("Should trigger OnTransfer listener when an NFT is transferred", async function () {
@@ -374,17 +371,14 @@ export const collectionTests = function () {
             const user1Address = await user1Client.getAddress();
             const user2Address = await user2Client.getAddress();
 
-            /* Étape 1 : mint d’un NFT pour disposer d’un token à transférer */
             const { request: mintReq, signature: mintSig } =
                 await user1Client.collection.createMintRequest(transferTitle, transferTokenURI);
             const mintTx = await relayerClient.collection.relayMintRequest(mintReq, mintSig);
             await mintTx.wait();
 
-            // Récupération du tokenId nouvellement minté
             const user1Collection = await user1Client.collection.getCollection();
             const tokenId = user1Collection[user1Collection.length - 1].id;
 
-            /* Étape 2 : préparation du listener avant l’envoi du transfert */
             const transferEventReceived = new Promise<void>((resolve, reject) => {
                 const listener = (from: string, to: string, amount: bigint) => {
                     if (from !== user1Address || to !== user2Address || amount !== tokenId) return;
@@ -404,14 +398,13 @@ export const collectionTests = function () {
                 relayerClient.collection.onTransferEvent(listener);
             });
 
-            /* Étape 3 : USER1 crée puis RELAYER relaie la requête de transfert */
             const { request: transferReq, signature: transferSig } =
                 await user1Client.collection.createTransferRequest(user2Address, tokenId);
             const transferTx =
                 await relayerClient.collection.relayTransferRequest(transferReq, transferSig);
             await transferTx.wait();
 
-            await transferEventReceived; // Attente que l’évènement soit capturé
+            await transferEventReceived;
         });
     });
 

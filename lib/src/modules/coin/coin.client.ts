@@ -281,13 +281,16 @@ export class PrivatelyCoinClient {
 
 
     /**
-     * Registers a listener for the "OnMint" event emitted by the contract.
+     * Registers a listener for the "OnMint" event emitted by the contract when new coins are minted.
      * @param listener A callback function to be executed when the "OnMint" event is triggered.
      */
     public onMintEvent(listener: OnMintListener): void {
         void this.contract.on(
             "OnMint",
-            (to: string, amount: bigint, finalBalance: bigint, event: Log) => {
+            (to: string,
+             amount: bigint,
+             finalBalance: bigint,
+             event: Log) => {
                 listener(to, amount, finalBalance, event);
             }
         );
@@ -295,7 +298,7 @@ export class PrivatelyCoinClient {
 
 
     /**
-     * Subscribes a listener to the "OnTransfer" event emitted by the contract.
+     * Subscribes a listener to the "OnTransfer" event emitted by the contract when a transaction is executed.
      * @param listener A callback function to be executed when the "OnTransfer" event is triggered.
      */
     public onTransferEvent(listener: OnTransferListener): void {

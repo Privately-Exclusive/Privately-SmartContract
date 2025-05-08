@@ -23,6 +23,68 @@ contract PrivatelyAuctionSystem is EIP712, ReentrancyGuard {
 
 
 
+    // -- Events --
+
+    /**
+     * @dev Emitted when a new auction is created.
+     * @param auctionId Unique auction identifier.
+     * @param seller Address of the seller.
+     * @param tokenId ID of the NFT.
+     * @param startPrice Starting price of the auction.
+     * @param endTime Timestamp when the auction ends.
+     */
+    event OnCreate(
+        uint256 indexed auctionId,
+        address indexed seller,
+        uint256 indexed tokenId,
+        uint256 startPrice,
+        uint256 endTime
+    );
+
+
+
+    /**
+     * @dev Emitted when a new highest bid is placed.
+     * @param auctionId Unique auction identifier.
+     * @param bidder Address of the bidder.
+     * @param bidAmount Bid amount.
+     */
+    event OnBid(
+        uint256 indexed auctionId,
+        address indexed bidder,
+        uint256 bidAmount
+    );
+
+
+
+    /**
+     * @dev Emitted when an auction is finalized.
+     * @param auctionId Unique auction identifier.
+     * @param tokenId ID of the NFT.
+     * @param highestBidder Address of the highest bidder.
+     * @param highestBid Final bid amount.
+     */
+    event OnEnd(
+        uint256 indexed auctionId,
+        uint256 indexed tokenId,
+        address indexed highestBidder,
+        uint256 highestBid
+    );
+
+
+
+    /**
+     * @dev Emitted when a bidder withdraws a pending refund.
+     * @param user   Address receiving the refund.
+     * @param amount Amount of ERC20 tokens withdrawn.
+     */
+    event OnWithdraw(
+        address indexed user,
+        uint256 amount
+    );
+
+
+
     /**
      * @dev Struct to store auction details.
      * @param seller Address of the NFT seller.
@@ -51,7 +113,6 @@ contract PrivatelyAuctionSystem is EIP712, ReentrancyGuard {
      * @param tokenId ID of the NFT being auctioned.
      * @param startPrice Starting price of the auction.
      * @param endTime Timestamp at which the auction ends.
-     * @param title Title or description of the auction.
      * @param nonce Unique value to prevent replay attacks.
      */
     struct CreateAuctionRequest {
@@ -112,54 +173,6 @@ contract PrivatelyAuctionSystem is EIP712, ReentrancyGuard {
 
     IERC721 public immutable collectionContract;
     IERC20 public immutable coinContract;
-
-
-
-    /**
-     * @dev Emitted when a new auction is created.
-     * @param auctionId Unique auction identifier.
-     * @param seller Address of the seller.
-     * @param tokenId ID of the NFT.
-     * @param startPrice Starting price of the auction.
-     * @param endTime Timestamp when the auction ends.
-     */
-    event AuctionCreated(
-        uint256 indexed auctionId,
-        address indexed seller,
-        uint256 indexed tokenId,
-        uint256 startPrice,
-        uint256 endTime
-    );
-
-
-
-    /**
-     * @dev Emitted when a new highest bid is placed.
-     * @param auctionId Unique auction identifier.
-     * @param bidder Address of the bidder.
-     * @param bidAmount Bid amount.
-     */
-    event NewHighestBid(
-        uint256 indexed auctionId,
-        address indexed bidder,
-        uint256 bidAmount
-    );
-
-
-
-    /**
-     * @dev Emitted when an auction is finalized.
-     * @param auctionId Unique auction identifier.
-     * @param tokenId ID of the NFT.
-     * @param highestBidder Address of the highest bidder.
-     * @param highestBid Final bid amount.
-     */
-    event AuctionFinalized(
-        uint256 indexed auctionId,
-        uint256 indexed tokenId,
-        address indexed highestBidder,
-        uint256 highestBid
-    );
 
 
 
@@ -258,7 +271,7 @@ contract PrivatelyAuctionSystem is EIP712, ReentrancyGuard {
         activeAuctionByToken[tokenId] = auctionId;
         _allAuctions.push(auctionId);
 
-        emit AuctionCreated(auctionId, seller, tokenId, startPrice, endTime);
+        emit OnCreate(auctionId, seller, tokenId, startPrice, endTime);
     }
 
 
@@ -320,7 +333,7 @@ contract PrivatelyAuctionSystem is EIP712, ReentrancyGuard {
             pendingWithdrawals[previousBidder] += previousBid;
         }
 
-        emit NewHighestBid(auctionId, bidder, bidAmount);
+        emit OnBid(auctionId, bidder, bidAmount);
     }
 
 
@@ -341,14 +354,14 @@ contract PrivatelyAuctionSystem is EIP712, ReentrancyGuard {
 
         if (auction.highestBidder == address(0)) {
             collectionContract.transferFrom(address(this), auction.seller, auction.tokenId);
-            emit AuctionFinalized(auctionId, auction.tokenId, address(0), 0);
+            emit OnEnd(auctionId, auction.tokenId, address(0), 0);
             return;
         }
 
         collectionContract.transferFrom(address(this), auction.highestBidder, auction.tokenId);
         coinContract.safeTransfer(auction.seller, auction.highestBid);
 
-        emit AuctionFinalized(auctionId, auction.tokenId, auction.highestBidder, auction.highestBid);
+        emit OnEnd(auctionId, auction.tokenId, auction.highestBidder, auction.highestBid);
     }
 
 
@@ -361,6 +374,7 @@ contract PrivatelyAuctionSystem is EIP712, ReentrancyGuard {
         require(amount > 0, "No funds to withdraw");
         pendingWithdrawals[msg.sender] = 0;
         coinContract.safeTransfer(msg.sender, amount);
+        emit OnWithdraw(msg.sender, amount);
     }
 
 

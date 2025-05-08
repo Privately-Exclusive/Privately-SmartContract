@@ -1,4 +1,5 @@
 import { Contract, Network, Signer, TransactionResponse, TypedDataDomain } from "ethers";
+import { Log } from "ethers/lib.esm";
 
 import AUCTION_SYSTEM_ARTIFACT from "../../../PrivatelyAuctionSystem.json";
 import { RequestSignature, RequestType } from "../../common/request-signature";
@@ -6,6 +7,7 @@ import { Auction } from "./auctions.auction";
 import { AUCTIONS_BID_REQUEST_TYPE, BidAuctionRequest } from "./auctions.bid.reqest";
 import { AUCTIONS_CREATE_REQUEST_TYPE, CreateAuctionRequest } from "./auctions.create.request";
 import { AuctionSystemError } from "./auctions.errors";
+import { OnBidListener, OnCreateListener, OnEnd, OnWithdrawListener } from "./auctions.events";
 import { AuctionsNonces } from "./auctions.nonces";
 
 
@@ -263,6 +265,76 @@ export class PrivatelyAuctionSystemClient {
         } catch (error) {
             throw AuctionSystemError.from(error, this.contract);
         }
+    }
+
+
+    /**
+     * Registers a listener for the "OnCreate" event emitted by the contract when an auction is created.
+     * @param listener  A callback function to be executed when the "OnCreate" event is triggered.
+     */
+    public onCreateEvent(listener: OnCreateListener): void {
+        void this.contract.on(
+            "OnCreate",
+            (auctionId: bigint,
+             seller: string,
+             tokenId: bigint,
+             startPrice: bigint,
+             endTime: bigint,
+             event: Log) => {
+                listener(auctionId, seller, tokenId, startPrice, endTime, event);
+            }
+        );
+    }
+
+
+    /**
+     * Registers a listener for the "OnBid" event emitted by the contract when a bid is placed.
+     * @param listener A callback function to be executed when the "OnBid" event is triggered.
+     */
+    public onBidEvent(listener: OnBidListener): void {
+        void this.contract.on(
+            "OnBid",
+            (auctionId: bigint,
+             bidder: string,
+             bidAmount: bigint,
+             event: Log) => {
+                listener(auctionId, bidder, bidAmount, event);
+            }
+        );
+    }
+
+
+    /**
+     * Registers a listener for the "OnEnd" event emitted by the contract when an auction ends.
+     * @param listener A callback function to be executed when the "OnEnd" event is triggered.
+     */
+    public onEndEvent(listener: OnEnd): void {
+        void this.contract.on(
+            "OnEnd",
+            (auctionId: bigint,
+             tokenId: bigint,
+             highestBidder: string,
+             highestBid: bigint,
+             event: Log) => {
+                listener(auctionId, tokenId, highestBidder, highestBid, event);
+            }
+        );
+    }
+
+
+    /**
+     * Registers a listener for the "OnWithdraw" event emitted by the contract when a user withdraws funds.
+     * @param listener A callback function to be executed when the "OnWithdraw" event is triggered.
+     */
+    public onWithdrawEvent(listener: OnWithdrawListener): void {
+        void this.contract.on(
+            "OnWithdraw",
+            (user: string,
+             amount: bigint,
+             event: Log) => {
+                listener(user, amount, event);
+            }
+        );
     }
 
 

@@ -265,7 +265,7 @@ export class PrivatelyCollectionClient {
 
 
     /**
-     * Registers a listener for the "OnMint" event emitted by the contract.
+     * Registers a listener for the "OnMint" event emitted by the contract when a new NFT is minted.
      * @param listener A callback function to be executed when the "OnMint" event is triggered.
      */
     public onMintEvent(listener: OnMintListener): void {
@@ -279,7 +279,7 @@ export class PrivatelyCollectionClient {
 
 
     /**
-     * Subscribes a listener to the "OnTransfer" event emitted by the contract.
+     * Subscribes a listener to the "OnTransfer" event emitted by the contract when a NFT transfer is executed.
      * @param listener A callback function to be executed when the "OnTransfer" event is triggered.
      */
     public onTransferEvent(listener: OnTransferListener): void {

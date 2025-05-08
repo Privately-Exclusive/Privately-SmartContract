@@ -319,4 +319,134 @@ export const auctionSystemTests = function () {
             expect(allActiveAuctions.length).to.equal(0);
         });
     });
+
+    describe("Events", function () {
+
+        const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+        let auctionEventId: bigint;
+        let auctionEventEndTime: number;
+        let eventTokenId: bigint;
+
+        let user1Address: string;
+        let user2Address: string;
+        let user3Address: string;
+
+        before(async function () {
+            user1Address = await user1Client.getAddress();
+            user2Address = await user2Client.getAddress();
+            user3Address = await user3Client.getAddress();
+        });
+
+        it("should emit OnCreate event", async function () {
+            this.timeout(30_000);
+
+            const onCreate = new Promise<void>((resolve, reject) => {
+                user1Client.auctions.onCreateEvent((auctionId, seller) => {
+                    try {
+                        auctionEventId = auctionId;
+                        expect(seller).to.equal(user1Address);
+                        resolve();
+                    } catch (e) {
+                        reject(e);
+                    }
+                });
+            });
+
+            const mintReq = await user1Client.collection.createMintRequest("EVENT_TOKEN", "url_EVENT_TOKEN");
+            const mintTx = await relayerClient.collection.relayMintRequest(mintReq.request, mintReq.signature);
+            await mintTx.wait(1);
+
+            const collection = await user1Client.collection.getCollection();
+            eventTokenId = collection[collection.length - 1].id;
+
+            const approveReq = await user1Client.collection.createApproveRequest(contractAddress, eventTokenId);
+            const approveTx = await relayerClient.collection.relayApproveRequest(approveReq.request, approveReq.signature);
+            await approveTx.wait(1);
+
+            const currentTime = await relayerClient.getLastBlockTimestamp();
+            auctionEventEndTime = currentTime + 25;
+
+            const createReq = await user1Client.auctions.createAuctionRequest(eventTokenId, 10n, BigInt(auctionEventEndTime));
+            const createTx = await relayerClient.auctions.relayCreateAuctionRequest(createReq.request, createReq.signature);
+            await createTx.wait(1);
+
+            await onCreate;
+        });
+
+        it("should emit OnBid event for USER3", async function () {
+            this.timeout(20_000);
+
+            const onBid = new Promise<void>((resolve, reject) => {
+                user3Client.auctions.onBidEvent((auctionId, bidder, bidAmount) => {
+                    try {
+                        expect(auctionId).to.equal(auctionEventId);
+                        expect(bidder).to.equal(user3Address);
+                        expect(bidAmount).to.equal(50n);
+                        resolve();
+                    } catch (e) {
+                        reject(e);
+                    }
+                });
+            });
+
+            const approveReq = await user3Client.coin.createApproveRequest(contractAddress, 50n);
+            const approveTx = await relayerClient.coin.relayApproveRequest(approveReq.request, approveReq.signature);
+            await approveTx.wait(1);
+
+            const bidReq = await user3Client.auctions.createBidRequest(auctionEventId, 50n);
+            const bidTx = await relayerClient.auctions.relayBidRequest(bidReq.request, bidReq.signature);
+            await bidTx.wait(1);
+
+            await onBid;
+        });
+
+        it("should emit OnEnd event when auction is finalized", async function () {
+            this.timeout(40_000);
+
+            const onEnd = new Promise<void>((resolve, reject) => {
+                relayerClient.auctions.onEndEvent((auctionId) => {
+                    try {
+                        expect(auctionId).to.equal(auctionEventId);
+                        resolve();
+                    } catch (e) {
+                        reject(e);
+                    }
+                });
+            });
+
+            const now = await relayerClient.getLastBlockTimestamp();
+            const waitSec = auctionEventEndTime - now + 2;
+            if (waitSec > 0) {
+                await sleep(waitSec * 1_000);
+            }
+
+            const endTx = await relayerClient.auctions.finalizeAuction(auctionEventId);
+            await endTx.wait(1);
+
+            await onEnd;
+        });
+
+        it("should emit OnWithdraw event when USER2 withdraws", async function () {
+            this.timeout(20_000);
+
+            const onWithdraw = new Promise<void>((resolve, reject) => {
+                relayerClient.auctions.onWithdrawEvent((user, amount) => {
+                    try {
+                        expect(user).to.equal(user2Address);
+                        expect(amount).to.equal(50n);
+                        resolve();
+                    } catch (e) {
+                        reject(e);
+                    }
+                });
+            });
+
+            const withdrawTx = await user2Client.auctions.withdraw();
+            await withdrawTx.wait(1);
+
+            await onWithdraw;
+        });
+    });
+
 };

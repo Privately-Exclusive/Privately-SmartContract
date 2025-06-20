@@ -141,6 +141,7 @@ export const auctionSystemTests = function () {
             expect(relayerClient.collection.relayApproveRequest(approveRequest, approveSignature)).to.be.rejectedWith(/Not the owner/);
         });
 
+
         it("USER3 should get the auction via getAllAuctions", async function () {
             this.timeout(15_000);
 
@@ -148,11 +149,38 @@ export const auctionSystemTests = function () {
             expect(allAuctions.length).to.equal(1);
         });
 
+
         it("USER3 should get the auction via getAllActiveAuctions", async function () {
             this.timeout(15_000);
 
             const allActiveAuctions = await user3Client.auctions.getAllActiveAuctions();
             expect(allActiveAuctions.length).to.equal(1);
+        });
+
+
+        it("should return empty array for a token never auctioned", async function () {
+            const unknownTokenId = 9999n;
+            const auctions = await user3Client.auctions.getAuctionsByToken(unknownTokenId);
+            expect(auctions).to.be.an("array").that.has.lengthOf(0);
+        });
+
+
+        it("should return all auctions for a token that was auctioned", async function () {
+            this.timeout(10_000);
+
+            const auctions = await user3Client.auctions.getAuctionsByToken(tokenId);
+
+            expect(auctions).to.be.an("array").that.is.not.empty;
+
+            auctions.forEach(auc => {
+                expect(auc).to.have.property("id").that.is.a("bigint");
+                expect(auc).to.have.property("seller").that.is.a("string");
+                expect(auc).to.have.property("startPrice").that.is.a("bigint");
+                expect(auc).to.have.property("highestBid").that.is.a("bigint");
+                expect(auc).to.have.property("highestBidder").that.is.a("string");
+                expect(auc).to.have.property("endTime").that.is.a("bigint");
+                expect(auc).to.have.property("settled").that.is.a("boolean");
+            });
         });
     });
 

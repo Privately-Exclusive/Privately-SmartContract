@@ -339,6 +339,32 @@ export class PrivatelyAuctionSystemClient {
 
 
     /**
+     * Retrieves all auctions (settled or not) for a given tokenId,
+     * and maps them into Auction instances via Auction.map().
+     * @param tokenId The NFT identifier.
+     * @returns A list of Auction objects.
+     */
+    public async getAuctionsByToken(tokenId: bigint): Promise<Auction[]> {
+        try {
+            const rawList: Array<any> = await this.contract.getAuctionsByToken(tokenId);
+
+            return rawList.map(raw => new Auction(
+                raw[1],
+                raw[0],
+                tokenId,
+                raw[2],
+                raw[3],
+                raw[4],
+                raw[5],
+                raw[6]
+            ));
+        } catch (error) {
+            throw AuctionSystemError.from(error, this.contract);
+        }
+    }
+
+
+    /**
      * Fetches the current nonces for a user.
      * @param userAddress The address of the user to fetch the nonce for.
      * @returns An object containing the nonces.

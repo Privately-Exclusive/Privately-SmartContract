@@ -466,11 +466,7 @@ contract PrivatelyAuctionSystem is EIP712, ReentrancyGuard {
      * @param tokenId The NFT identifier.
      * @return results Array of Auction structs whose .tokenId == tokenId.
      */
-    function getAuctionsByToken(uint256 tokenId)
-    external
-    view
-    returns (Auction[] memory results)
-    {
+    function getAuctionsByToken(uint256 tokenId) external view returns (Auction[] memory results) {
         uint256[] storage ids = auctionsByToken[tokenId];
         uint256 len = ids.length;
         results = new Auction[](len);

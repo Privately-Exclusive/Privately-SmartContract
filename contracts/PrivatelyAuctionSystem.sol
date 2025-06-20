@@ -163,8 +163,11 @@ contract PrivatelyAuctionSystem is EIP712, ReentrancyGuard {
     // Mapping from NFT tokenId to the active auction ID (0 if none).
     mapping(uint256 => uint256) public activeAuctionByToken;
 
+    // Mapping from tokenId to all auction IDs (active or settled).
+    mapping(uint256 => uint256[]) private auctionsByToken;
+
     // Array of all auction IDs created.
-    uint256[] private _allAuctions;
+    uint256[] private allAuctions;
 
     // Internal counter used in auction ID generation.
     uint256 private _auctionCounter;
@@ -269,7 +272,8 @@ contract PrivatelyAuctionSystem is EIP712, ReentrancyGuard {
 
         auctions[auctionId] = newAuction;
         activeAuctionByToken[tokenId] = auctionId;
-        _allAuctions.push(auctionId);
+        auctionsByToken[tokenId].push(auctionId);
+        allAuctions.push(auctionId);
 
         emit OnCreate(auctionId, seller, tokenId, startPrice, endTime);
     }
@@ -397,7 +401,7 @@ contract PrivatelyAuctionSystem is EIP712, ReentrancyGuard {
      * @return An array of all auction IDs.
      */
     function getAllAuctions() external view returns (uint256[] memory) {
-        return _allAuctions;
+        return allAuctions;
     }
 
 
@@ -408,9 +412,9 @@ contract PrivatelyAuctionSystem is EIP712, ReentrancyGuard {
      */
     function getAllActiveAuctions() external view returns (uint256[] memory) {
         uint256 count = 0;
-        uint256 total = _allAuctions.length;
+        uint256 total = allAuctions.length;
         for (uint256 i = 0; i < total; i++) {
-            Auction storage auction = auctions[_allAuctions[i]];
+            Auction storage auction = auctions[allAuctions[i]];
             if (!auction.settled && block.timestamp < auction.endTime) {
                 count++;
             }
@@ -419,9 +423,9 @@ contract PrivatelyAuctionSystem is EIP712, ReentrancyGuard {
         uint256[] memory activeAuctionIds = new uint256[](count);
         uint256 index = 0;
         for (uint256 i = 0; i < total; i++) {
-            Auction storage auction = auctions[_allAuctions[i]];
+            Auction storage auction = auctions[allAuctions[i]];
             if (!auction.settled && block.timestamp < auction.endTime) {
-                activeAuctionIds[index] = _allAuctions[i];
+                activeAuctionIds[index] = allAuctions[i];
                 index++;
             }
         }
@@ -437,9 +441,9 @@ contract PrivatelyAuctionSystem is EIP712, ReentrancyGuard {
      */
     function getSellerAuctions(address seller) external view returns (uint256[] memory) {
         uint256 count = 0;
-        uint256 total = _allAuctions.length;
+        uint256 total = allAuctions.length;
         for (uint256 i = 0; i < total; i++) {
-            if (auctions[_allAuctions[i]].seller == seller) {
+            if (auctions[allAuctions[i]].seller == seller) {
                 count++;
             }
         }
@@ -447,12 +451,32 @@ contract PrivatelyAuctionSystem is EIP712, ReentrancyGuard {
         uint256[] memory sellerAuctionIds = new uint256[](count);
         uint256 index = 0;
         for (uint256 i = 0; i < total; i++) {
-            if (auctions[_allAuctions[i]].seller == seller) {
-                sellerAuctionIds[index] = _allAuctions[i];
+            if (auctions[allAuctions[i]].seller == seller) {
+                sellerAuctionIds[index] = allAuctions[i];
                 index++;
             }
         }
         return sellerAuctionIds;
+    }
+
+
+
+    /**
+     * @notice Returns all Auction structs (past and present) for a given tokenId.
+     * @param tokenId The NFT identifier.
+     * @return results Array of Auction structs whose .tokenId == tokenId.
+     */
+    function getAuctionsByToken(uint256 tokenId)
+    external
+    view
+    returns (Auction[] memory results)
+    {
+        uint256[] storage ids = auctionsByToken[tokenId];
+        uint256 len = ids.length;
+        results = new Auction[](len);
+        for (uint256 i = 0; i < len; i++) {
+            results[i] = auctions[ids[i]];
+        }
     }
 
 

@@ -47,6 +47,15 @@ export class PrivatelyCoinClient {
 
 
     /**
+     * Retrieves the address of the current deployed contract.
+     * @returns The contract address.
+     */
+    public getContractAddress(): string {
+        return COIN_CONTRACT_ADDRESS;
+    }
+
+
+    /**
      * Creates a signed transfer request for meta-transaction execution
      * @param to Recipient address
      * @param amount Token amount to transfer

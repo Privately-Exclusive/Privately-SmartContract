@@ -377,4 +377,52 @@ export class PrivatelyAuctionSystemClient {
             throw AuctionSystemError.from(error, this.contract);
         }
     }
+
+
+    /**
+     * Retrieves all auctions where the user has placed at least one bid.
+     * @param userAddress The address of the user to fetch auctions for.
+     * @returns An array of Auction objects where the user has bid.
+     */
+    public async getUserBidAuctions(userAddress: string): Promise<Auction[]> {
+        try {
+            const auctionIds = await this.contract.getUserBidAuctions(userAddress);
+            return await Auction.map(auctionIds, this);
+        } catch (error) {
+            throw AuctionSystemError.from(error, this.contract);
+        }
+    }
+
+
+    /**
+     * Retrieves all active auctions where the user has placed at least one bid.
+     * @param userAddress The address of the user to fetch active auctions for.
+     * @returns An array of active Auction objects where the user has bid.
+     */
+    public async getUserActiveBidAuctions(userAddress: string): Promise<Auction[]> {
+        try {
+            const auctionIds = await this.contract.getUserActiveBidAuctions(userAddress);
+            return await Auction.map(auctionIds, this);
+        } catch (error) {
+            throw AuctionSystemError.from(error, this.contract);
+        }
+    }
+
+
+    /**
+     * Retrieves all auctions where the current signer has placed at least one bid.
+     * @returns An array of Auction objects where the signer has bid.
+     */
+    public async getBidAuctions(): Promise<Auction[]> {
+        return this.getUserBidAuctions(await this.signer.getAddress());
+    }
+
+
+    /**
+     * Retrieves all active auctions where the current signer has placed at least one bid.
+     * @returns An array of active Auction objects where the signer has bid.
+     */
+    public async getActiveBidAuctions(): Promise<Auction[]> {
+        return this.getUserActiveBidAuctions(await this.signer.getAddress());
+    }
 }

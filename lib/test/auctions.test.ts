@@ -348,6 +348,172 @@ export const auctionSystemTests = function () {
         });
     });
 
+    describe("User Bid Tracking", function () {
+        let trackingTokenId1: bigint;
+        let trackingTokenId2: bigint;
+        let trackingAuctionId1: bigint;
+        let trackingAuctionId2: bigint;
+
+        it("should prepare tokens and auctions for tracking tests", async function () {
+            this.timeout(60_000);
+
+            // Mint more tokens for users since they spent some in previous tests
+            const tx1 = await relayerClient.coin.mint(await user2Client.getAddress(), 300n);
+            await tx1.wait();
+            const tx2 = await relayerClient.coin.mint(await user3Client.getAddress(), 300n);
+            await tx2.wait();
+
+            // Mint two tokens for USER1
+            const mintReq1 = await user1Client.collection.createMintRequest("TRACKING_TOKEN_1", "url_tracking_1");
+            const mintTx1 = await relayerClient.collection.relayMintRequest(mintReq1.request, mintReq1.signature);
+            await mintTx1.wait(1);
+
+            const mintReq2 = await user1Client.collection.createMintRequest("TRACKING_TOKEN_2", "url_tracking_2");
+            const mintTx2 = await relayerClient.collection.relayMintRequest(mintReq2.request, mintReq2.signature);
+            await mintTx2.wait(1);
+
+            const collection = await user1Client.collection.getCollection();
+            trackingTokenId1 = collection[collection.length - 2].id;
+            trackingTokenId2 = collection[collection.length - 1].id;
+
+            // Create two auctions
+            const currentTime = await relayerClient.getLastBlockTimestamp();
+            const endTime1 = currentTime + 120;
+            const endTime2 = currentTime + 180;
+
+            // First auction
+            const approveReq1 = await user1Client.collection.createApproveRequest(contractAddress, trackingTokenId1);
+            const approveTx1 = await relayerClient.collection.relayApproveRequest(approveReq1.request, approveReq1.signature);
+            await approveTx1.wait(1);
+
+            const createReq1 = await user1Client.auctions.createAuctionRequest(trackingTokenId1, 20n, BigInt(endTime1));
+            const createTx1 = await relayerClient.auctions.relayCreateAuctionRequest(createReq1.request, createReq1.signature);
+            await createTx1.wait(1);
+
+            // Second auction
+            const approveReq2 = await user1Client.collection.createApproveRequest(contractAddress, trackingTokenId2);
+            const approveTx2 = await relayerClient.collection.relayApproveRequest(approveReq2.request, approveReq2.signature);
+            await approveTx2.wait(1);
+
+            const createReq2 = await user1Client.auctions.createAuctionRequest(trackingTokenId2, 30n, BigInt(endTime2));
+            const createTx2 = await relayerClient.auctions.relayCreateAuctionRequest(createReq2.request, createReq2.signature);
+            await createTx2.wait(1);
+
+            // Get auction IDs
+            const userAuctions = await user1Client.auctions.getAuctions();
+            trackingAuctionId1 = userAuctions[userAuctions.length - 2].id;
+            trackingAuctionId2 = userAuctions[userAuctions.length - 1].id;
+        });
+
+        it("USER2 should have one bid auction initially from previous tests", async function () {
+            const bidAuctions = await user2Client.auctions.getBidAuctions();
+            const activeBidAuctions = await user2Client.auctions.getActiveBidAuctions();
+
+            expect(bidAuctions.length).to.equal(1); // From previous tests
+            expect(activeBidAuctions.length).to.equal(0); // Previous auction ended
+        });
+
+        it("USER3 should have one bid auction initially from previous tests", async function () {
+            const user3Address = await user3Client.getAddress();
+            const bidAuctions = await user2Client.auctions.getUserBidAuctions(user3Address);
+            const activeBidAuctions = await user2Client.auctions.getUserActiveBidAuctions(user3Address);
+
+            expect(bidAuctions.length).to.equal(1); // From previous tests
+            expect(activeBidAuctions.length).to.equal(0); // Previous auction ended
+        });
+
+        it("USER2 should bid on first tracking auction", async function () {
+            this.timeout(15_000);
+
+            const approveReq = await user2Client.coin.createApproveRequest(contractAddress, 25n);
+            const approveTx = await relayerClient.coin.relayApproveRequest(approveReq.request, approveReq.signature);
+            await approveTx.wait(1);
+
+            const bidReq = await user2Client.auctions.createBidRequest(trackingAuctionId1, 25n);
+            const bidTx = await relayerClient.auctions.relayBidRequest(bidReq.request, bidReq.signature);
+            await bidTx.wait(1);
+
+            const bidAuctions = await user2Client.auctions.getBidAuctions();
+            const activeBidAuctions = await user2Client.auctions.getActiveBidAuctions();
+
+            expect(bidAuctions.length).to.equal(2);
+            expect(activeBidAuctions.length).to.equal(1);
+            expect(activeBidAuctions[0].id).to.equal(trackingAuctionId1);
+        });
+
+        it("USER3 should bid on both tracking auctions", async function () {
+            this.timeout(20_000);
+
+            // Bid on first auction
+            const approveReq1 = await user3Client.coin.createApproveRequest(contractAddress, 35n);
+            const approveTx1 = await relayerClient.coin.relayApproveRequest(approveReq1.request, approveReq1.signature);
+            await approveTx1.wait(1);
+
+            const bidReq1 = await user3Client.auctions.createBidRequest(trackingAuctionId1, 35n);
+            const bidTx1 = await relayerClient.auctions.relayBidRequest(bidReq1.request, bidReq1.signature);
+            await bidTx1.wait(1);
+
+            // Bid on second auction
+            const approveReq2 = await user3Client.coin.createApproveRequest(contractAddress, 40n);
+            const approveTx2 = await relayerClient.coin.relayApproveRequest(approveReq2.request, approveReq2.signature);
+            await approveTx2.wait(1);
+
+            const bidReq2 = await user3Client.auctions.createBidRequest(trackingAuctionId2, 40n);
+            const bidTx2 = await relayerClient.auctions.relayBidRequest(bidReq2.request, bidReq2.signature);
+            await bidTx2.wait(1);
+
+            const bidAuctions = await user3Client.auctions.getBidAuctions();
+            const activeBidAuctions = await user3Client.auctions.getActiveBidAuctions();
+
+            expect(bidAuctions.length).to.equal(3); // Including previous tests
+            expect(activeBidAuctions.length).to.equal(2);
+        });
+
+        it("USER2 should bid again on first auction (no duplicate tracking)", async function () {
+            this.timeout(15_000);
+
+            const approveReq = await user2Client.coin.createApproveRequest(contractAddress, 45n);
+            const approveTx = await relayerClient.coin.relayApproveRequest(approveReq.request, approveReq.signature);
+            await approveTx.wait(1);
+
+            const bidReq = await user2Client.auctions.createBidRequest(trackingAuctionId1, 45n);
+            const bidTx = await relayerClient.auctions.relayBidRequest(bidReq.request, bidReq.signature);
+            await bidTx.wait(1);
+
+            const bidAuctions = await user2Client.auctions.getBidAuctions();
+            const activeBidAuctions = await user2Client.auctions.getActiveBidAuctions();
+
+            // Should still be 2 auctions (no duplicate)
+            expect(bidAuctions.length).to.equal(2);
+            expect(activeBidAuctions.length).to.equal(1);
+        });
+
+        it("should test getUserBidAuctions and getUserActiveBidAuctions with specific addresses", async function () {
+            const user2Address = await user2Client.getAddress();
+            const user3Address = await user3Client.getAddress();
+
+            const user2BidAuctions = await relayerClient.auctions.getUserBidAuctions(user2Address);
+            const user2ActiveBidAuctions = await relayerClient.auctions.getUserActiveBidAuctions(user2Address);
+
+            const user3BidAuctions = await relayerClient.auctions.getUserBidAuctions(user3Address);
+            const user3ActiveBidAuctions = await relayerClient.auctions.getUserActiveBidAuctions(user3Address);
+
+            expect(user2BidAuctions.length).to.equal(2);
+            expect(user2ActiveBidAuctions.length).to.equal(1);
+
+            expect(user3BidAuctions.length).to.equal(3);
+            expect(user3ActiveBidAuctions.length).to.equal(2);
+
+            // Verify auction IDs are included
+            const user2ActiveIds = user2ActiveBidAuctions.map(a => a.id);
+            const user3ActiveIds = user3ActiveBidAuctions.map(a => a.id);
+
+            expect(user2ActiveIds).to.include(trackingAuctionId1);
+            expect(user3ActiveIds).to.include(trackingAuctionId1);
+            expect(user3ActiveIds).to.include(trackingAuctionId2);
+        });
+    });
+
     describe("Events", function () {
 
         const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -462,7 +628,7 @@ export const auctionSystemTests = function () {
                 relayerClient.auctions.onWithdrawEvent((user, amount) => {
                     try {
                         expect(user).to.equal(user2Address);
-                        expect(amount).to.equal(50n);
+                        expect(amount).to.equal(75n);
                         resolve();
                     } catch (e) {
                         reject(e);

@@ -166,6 +166,12 @@ contract PrivatelyAuctionSystem is EIP712, ReentrancyGuard {
     // Mapping from tokenId to all auction IDs (active or settled).
     mapping(uint256 => uint256[]) private auctionsByToken;
 
+    // Mapping from user address to auction IDs they have bid on.
+    mapping(address => uint256[]) private userBidAuctions;
+
+    // Mapping to check if a user has already bid on a specific auction (to avoid duplicates).
+    mapping(address => mapping(uint256 => bool)) private userHasBidOnAuction;
+
     // Array of all auction IDs created.
     uint256[] private allAuctions;
 
@@ -333,6 +339,12 @@ contract PrivatelyAuctionSystem is EIP712, ReentrancyGuard {
         auction.highestBid = bidAmount;
         auction.highestBidder = bidder;
 
+        // Track user's bid history (avoid duplicates)
+        if (!userHasBidOnAuction[bidder][auctionId]) {
+            userBidAuctions[bidder].push(auctionId);
+            userHasBidOnAuction[bidder][auctionId] = true;
+        }
+
         if (previousBidder != address(0)) {
             pendingWithdrawals[previousBidder] += previousBid;
         }
@@ -484,5 +496,46 @@ contract PrivatelyAuctionSystem is EIP712, ReentrancyGuard {
      */
     function getAuction(uint256 auctionId) external view returns (Auction memory) {
         return auctions[auctionId];
+    }
+
+    /**
+     * @dev Retrieves all auctions where the user has placed at least one bid.
+     * @param user Address of the user.
+     * @return An array of auction IDs where the user has bid.
+     */
+    function getUserBidAuctions(address user) external view returns (uint256[] memory) {
+        return userBidAuctions[user];
+    }
+
+    /**
+     * @dev Retrieves all active auctions where the user has placed at least one bid.
+     * @param user Address of the user.
+     * @return An array of active auction IDs where the user has bid.
+     */
+    function getUserActiveBidAuctions(address user) external view returns (uint256[] memory) {
+        uint256[] storage userAuctions = userBidAuctions[user];
+        uint256 count = 0;
+        uint256 total = userAuctions.length;
+
+        // Count active auctions first
+        for (uint256 i = 0; i < total; i++) {
+            Auction storage auction = auctions[userAuctions[i]];
+            if (!auction.settled && block.timestamp <= auction.endTime) {
+                count++;
+            }
+        }
+
+        // Build result array
+        uint256[] memory activeUserAuctions = new uint256[](count);
+        uint256 index = 0;
+        for (uint256 i = 0; i < total; i++) {
+            Auction storage auction = auctions[userAuctions[i]];
+            if (!auction.settled && block.timestamp <= auction.endTime) {
+                activeUserAuctions[index] = userAuctions[i];
+                index++;
+            }
+        }
+
+        return activeUserAuctions;
     }
 }

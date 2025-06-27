@@ -163,16 +163,13 @@ contract PrivatelyAuctionSystem is EIP712, ReentrancyGuard {
     // Mapping from NFT tokenId to the active auction ID (0 if none).
     mapping(uint256 => uint256) public activeAuctionByToken;
 
-    // Mapping from tokenId to all auction IDs (active or settled).
-    mapping(uint256 => uint256[]) private auctionsByToken;
-
     // Mapping from user address to auction IDs they have bid on.
     mapping(address => uint256[]) private userBidAuctions;
 
     // Mapping to check if a user has already bid on a specific auction (to avoid duplicates).
     mapping(address => mapping(uint256 => bool)) private userHasBidOnAuction;
 
-    // Array of all auction IDs created.
+    // Single array containing all auction IDs (both active and settled)
     uint256[] private allAuctions;
 
     // Internal counter used in auction ID generation.
@@ -278,7 +275,6 @@ contract PrivatelyAuctionSystem is EIP712, ReentrancyGuard {
 
         auctions[auctionId] = newAuction;
         activeAuctionByToken[tokenId] = auctionId;
-        auctionsByToken[tokenId].push(auctionId);
         allAuctions.push(auctionId);
 
         emit OnCreate(auctionId, seller, tokenId, startPrice, endTime);
@@ -425,22 +421,27 @@ contract PrivatelyAuctionSystem is EIP712, ReentrancyGuard {
     function getAllActiveAuctions() external view returns (uint256[] memory) {
         uint256 count = 0;
         uint256 total = allAuctions.length;
+
+        // Count active auctions
         for (uint256 i = 0; i < total; i++) {
             Auction storage auction = auctions[allAuctions[i]];
-            if (!auction.settled && block.timestamp < auction.endTime) {
+            if (!auction.settled && block.timestamp <= auction.endTime) {
                 count++;
             }
         }
 
         uint256[] memory activeAuctionIds = new uint256[](count);
         uint256 index = 0;
+
+        // Collect active auction IDs
         for (uint256 i = 0; i < total; i++) {
             Auction storage auction = auctions[allAuctions[i]];
-            if (!auction.settled && block.timestamp < auction.endTime) {
+            if (!auction.settled && block.timestamp <= auction.endTime) {
                 activeAuctionIds[index] = allAuctions[i];
                 index++;
             }
         }
+
         return activeAuctionIds;
     }
 
@@ -479,11 +480,25 @@ contract PrivatelyAuctionSystem is EIP712, ReentrancyGuard {
      * @return results Array of Auction structs whose .tokenId == tokenId.
      */
     function getAuctionsByToken(uint256 tokenId) external view returns (Auction[] memory results) {
-        uint256[] storage ids = auctionsByToken[tokenId];
-        uint256 len = ids.length;
-        results = new Auction[](len);
-        for (uint256 i = 0; i < len; i++) {
-            results[i] = auctions[ids[i]];
+        uint256 count = 0;
+        uint256 total = allAuctions.length;
+
+        // Count auctions for this token
+        for (uint256 i = 0; i < total; i++) {
+            if (auctions[allAuctions[i]].tokenId == tokenId) {
+                count++;
+            }
+        }
+
+        results = new Auction[](count);
+        uint256 index = 0;
+
+        // Collect auctions for this token
+        for (uint256 i = 0; i < total; i++) {
+            if (auctions[allAuctions[i]].tokenId == tokenId) {
+                results[index] = auctions[allAuctions[i]];
+                index++;
+            }
         }
     }
 
@@ -498,6 +513,8 @@ contract PrivatelyAuctionSystem is EIP712, ReentrancyGuard {
         return auctions[auctionId];
     }
 
+    
+    
     /**
      * @dev Retrieves all auctions where the user has placed at least one bid.
      * @param user Address of the user.
@@ -507,6 +524,8 @@ contract PrivatelyAuctionSystem is EIP712, ReentrancyGuard {
         return userBidAuctions[user];
     }
 
+    
+    
     /**
      * @dev Retrieves all active auctions where the user has placed at least one bid.
      * @param user Address of the user.
@@ -537,5 +556,48 @@ contract PrivatelyAuctionSystem is EIP712, ReentrancyGuard {
         }
 
         return activeUserAuctions;
+    }
+    
+    
+
+    /**
+     * @dev Retrieves all expired but unfinalized auctions (endTime passed but not settled).
+     * @return An array of expired auction IDs that need to be finalized.
+     */
+    function getAllExpiredUnfinalizedAuctions() external view returns (uint256[] memory) {
+        uint256 count = 0;
+        uint256 total = allAuctions.length;
+
+        // Count expired unfinalized auctions
+        for (uint256 i = 0; i < total; i++) {
+            Auction storage auction = auctions[allAuctions[i]];
+            if (!auction.settled && block.timestamp > auction.endTime) {
+                count++;
+            }
+        }
+
+        uint256[] memory expiredAuctionIds = new uint256[](count);
+        uint256 index = 0;
+
+        // Collect expired unfinalized auction IDs
+        for (uint256 i = 0; i < total; i++) {
+            Auction storage auction = auctions[allAuctions[i]];
+            if (!auction.settled && block.timestamp > auction.endTime) {
+                expiredAuctionIds[index] = allAuctions[i];
+                index++;
+            }
+        }
+
+        return expiredAuctionIds;
+    }
+
+
+
+    /**
+     * @dev Returns the total number of auctions created (for debugging/monitoring).
+     * @return The count of all auctions.
+     */
+    function getTotalAuctionsCount() external view returns (uint256) {
+        return allAuctions.length;
     }
 }

@@ -206,7 +206,7 @@ export class PrivatelyAuctionSystemClient {
 
     /**
      * Retrieves all active auction IDs in the contract.
-     * @returns An array of active auction IDs.
+     * @returns An array of Auction objects representing active auctions.
      */
     public async getAllActiveAuctions(): Promise<Auction[]> {
         try {
@@ -424,5 +424,19 @@ export class PrivatelyAuctionSystemClient {
      */
     public async getActiveBidAuctions(): Promise<Auction[]> {
         return this.getUserActiveBidAuctions(await this.signer.getAddress());
+    }
+
+
+    /**
+     * Retrieves all expired but unfinalized auction IDs in the contract.
+     * @returns An array of expired auction objects that need to be finalized.
+     */
+    public async getAllExpiredUnfinalizedAuctions(): Promise<Auction[]> {
+        try {
+            const auctionList = await this.contract.getAllExpiredUnfinalizedAuctions();
+            return await Auction.map(auctionList, this);
+        } catch (error) {
+            throw AuctionSystemError.from(error, this.contract);
+        }
     }
 }

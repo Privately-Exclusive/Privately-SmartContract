@@ -1,12 +1,12 @@
 export class Auction {
-    id: bigint;
-    seller: string;
-    tokenId: bigint;
-    startPrice: bigint;
-    highestBid: bigint;
-    highestBidder: string;
-    endTime: bigint;
-    settled: boolean;
+    id: bigint; // Auction ID
+    seller: string; // Seller's address
+    tokenId: bigint; // Token ID being auctioned
+    startPrice: bigint; // Starting price of the auction
+    highestBid: bigint; // Highest bid placed in the auction
+    highestBidder: string; // Address of the highest bidder
+    endTime: bigint; // End time of the auction (timestamp)
+    settled: boolean; // Indicates if the auction has been settled
 
 
     constructor(

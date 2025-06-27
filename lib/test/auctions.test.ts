@@ -643,4 +643,129 @@ export const auctionSystemTests = function () {
         });
     });
 
+    describe("Auction State Queries", function () {
+        let queryTokenId1: bigint;
+        let queryTokenId2: bigint;
+        let queryAuctionId1: bigint;
+        let queryAuctionId2: bigint;
+        let queryEndTime1: number;
+        let queryEndTime2: number;
+
+        it("should prepare auctions for state query tests", async function () {
+            this.timeout(60_000);
+
+            // Mint more tokens for USER1
+            const mintReq1 = await user1Client.collection.createMintRequest("QUERY_TOKEN_1", "url_query_1");
+            const mintTx1 = await relayerClient.collection.relayMintRequest(mintReq1.request, mintReq1.signature);
+            await mintTx1.wait(1);
+
+            const mintReq2 = await user1Client.collection.createMintRequest("QUERY_TOKEN_2", "url_query_2");
+            const mintTx2 = await relayerClient.collection.relayMintRequest(mintReq2.request, mintReq2.signature);
+            await mintTx2.wait(1);
+
+            const collection = await user1Client.collection.getCollection();
+            queryTokenId1 = collection[collection.length - 2].id;
+            queryTokenId2 = collection[collection.length - 1].id;
+
+            const currentTime = await relayerClient.getLastBlockTimestamp();
+            queryEndTime1 = currentTime + 60; // Short auction
+            queryEndTime2 = currentTime + 300; // Longer auction
+
+            // Create first auction (will expire soon)
+            const approveReq1 = await user1Client.collection.createApproveRequest(contractAddress, queryTokenId1);
+            const approveTx1 = await relayerClient.collection.relayApproveRequest(approveReq1.request, approveReq1.signature);
+            await approveTx1.wait(1);
+
+            const createReq1 = await user1Client.auctions.createAuctionRequest(queryTokenId1, 15n, BigInt(queryEndTime1));
+            const createTx1 = await relayerClient.auctions.relayCreateAuctionRequest(createReq1.request, createReq1.signature);
+            await createTx1.wait(1);
+
+            // Create second auction (will stay active longer)
+            const approveReq2 = await user1Client.collection.createApproveRequest(contractAddress, queryTokenId2);
+            const approveTx2 = await relayerClient.collection.relayApproveRequest(approveReq2.request, approveReq2.signature);
+            await approveTx2.wait(1);
+
+            const createReq2 = await user1Client.auctions.createAuctionRequest(queryTokenId2, 25n, BigInt(queryEndTime2));
+            const createTx2 = await relayerClient.auctions.relayCreateAuctionRequest(createReq2.request, createReq2.signature);
+            await createTx2.wait(1);
+
+            // Get auction IDs
+            const userAuctions = await user1Client.auctions.getAuctions();
+            queryAuctionId1 = userAuctions[userAuctions.length - 2].id;
+            queryAuctionId2 = userAuctions[userAuctions.length - 1].id;
+        });
+
+        it("should return active auctions via getAllActiveAuctions", async function () {
+            this.timeout(10_000);
+
+            const activeAuctions = await relayerClient.auctions.getAllActiveAuctions();
+
+            // Should include both new auctions since they haven't expired yet
+            expect(activeAuctions.length).to.be.greaterThanOrEqual(2);
+
+            const activeIds = activeAuctions.map(a => a.id);
+            expect(activeIds).to.include(queryAuctionId1);
+            expect(activeIds).to.include(queryAuctionId2);
+
+            // Verify they are actually active
+            activeAuctions.forEach(auction => {
+                expect(auction.settled).to.be.false;
+            });
+        });
+
+        it("should return expired unfinalized auctions via getAllExpiredUnfinalizedAuctions", async function () {
+            this.timeout(70_000);
+
+            // Wait for first auction to expire but not the second
+            while (await relayerClient.getLastBlockTimestamp() < queryEndTime1 + 5) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+
+            const expiredAuctions = await relayerClient.auctions.getAllExpiredUnfinalizedAuctions();
+
+            // Should include the first auction since it expired but hasn't been finalized
+            expect(expiredAuctions.length).to.be.greaterThanOrEqual(1);
+
+            const expiredIds = expiredAuctions.map(a => a.id);
+            expect(expiredIds).to.include(queryAuctionId1);
+
+            // Verify they are expired and unfinalized
+            expiredAuctions.forEach(auction => {
+                expect(auction.settled).to.be.false;
+                const currentTime = Math.floor(Date.now() / 1000);
+                expect(Number(auction.endTime)).to.be.lessThan(currentTime);
+            });
+
+            // Active auctions should no longer include the expired one
+            const activeAuctions = await relayerClient.auctions.getAllActiveAuctions();
+            const activeIds = activeAuctions.map(a => a.id);
+            expect(activeIds).to.not.include(queryAuctionId1);
+            expect(activeIds).to.include(queryAuctionId2); // Second auction should still be active
+        });
+
+        it("should have no expired unfinalized auctions after finalizing", async function () {
+            this.timeout(15_000);
+
+            // Finalize the expired auction
+            const finalizeTx = await relayerClient.auctions.finalizeAuction(queryAuctionId1);
+            await finalizeTx.wait(1);
+
+            const expiredAuctions = await relayerClient.auctions.getAllExpiredUnfinalizedAuctions();
+
+            // Should no longer include the finalized auction
+            const expiredIds = expiredAuctions.map(a => a.id);
+            expect(expiredIds).to.not.include(queryAuctionId1);
+        });
+
+        it("should verify active auctions still work correctly", async function () {
+            const activeAuctions = await relayerClient.auctions.getAllActiveAuctions();
+
+            // Second auction should still be active
+            const activeIds = activeAuctions.map(a => a.id);
+            expect(activeIds).to.include(queryAuctionId2);
+
+            // First auction should not be in active auctions
+            expect(activeIds).to.not.include(queryAuctionId1);
+        });
+    });
 };

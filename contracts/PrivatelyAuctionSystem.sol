@@ -268,7 +268,7 @@ contract PrivatelyAuctionSystem is EIP712, ReentrancyGuard {
             tokenId: tokenId,
             startPrice: startPrice,
             highestBid: 0,
-            highestBidder: address(0),
+            highestBidder: seller,
             endTime: endTime,
             settled: false
         });
@@ -364,9 +364,9 @@ contract PrivatelyAuctionSystem is EIP712, ReentrancyGuard {
         auction.settled = true;
         activeAuctionByToken[auction.tokenId] = 0;
 
-        if (auction.highestBidder == address(0)) {
+        if (auction.highestBidder == auction.seller) {
             collectionContract.transferFrom(address(this), auction.seller, auction.tokenId);
-            emit OnEnd(auctionId, auction.tokenId, address(0), 0);
+            emit OnEnd(auctionId, auction.tokenId, auction.seller, 0);
             return;
         }
 

@@ -12,6 +12,7 @@ const RELAYER_PRIVATE_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efca
 const USER1_PRIVATE_KEY = "0xdf57089febbacf7ba0bc227dafbffa9fc08a93fdc68e1e42411a14efcf23656e";
 const USER2_PRIVATE_KEY = "0xde9be858da4a475276426320d5e9262ecfc3ba460bfac56360bfa6c4c28b4ee0";
 const USER3_PRIVATE_KEY = "0x689af8efa8c651a91ad287602527f3af2fe9f6501a7ac4b061667b5a93e037fd";
+const USER4_PRIVATE_KEY = "0x47e179ec197488593b187f80a00e12e3f254826327b69f66eb0b1b766b0bb7a3";
 
 const FIRST_TITLE = "SCH - Deux Mille";
 
@@ -28,6 +29,7 @@ export const auctionSystemTests = function () {
     let user1Client: PrivatelyClient;
     let user2Client: PrivatelyClient;
     let user3Client: PrivatelyClient;
+    let user4Client: PrivatelyClient;
 
     let auctionId: bigint;
     let auctionEndTime: number;
@@ -40,11 +42,13 @@ export const auctionSystemTests = function () {
         const user1Wallet = new Wallet(USER1_PRIVATE_KEY, provider);
         const user2Wallet = new Wallet(USER2_PRIVATE_KEY, provider);
         const user3Wallet = new Wallet(USER3_PRIVATE_KEY, provider);
+        const user4Wallet = new Wallet(USER4_PRIVATE_KEY, provider);
 
         relayerClient = await PrivatelyClient.create(relayerWallet);
         user1Client = await PrivatelyClient.create(user1Wallet);
         user2Client = await PrivatelyClient.create(user2Wallet);
         user3Client = await PrivatelyClient.create(user3Wallet);
+        user4Client = await PrivatelyClient.create(user4Wallet);
 
         contractAddress = relayerClient.auctions.getContractAddress();
     });
@@ -766,6 +770,84 @@ export const auctionSystemTests = function () {
 
             // First auction should not be in active auctions
             expect(activeIds).to.not.include(queryAuctionId1);
+        });
+    });
+
+    describe("Auction with no bids", function () {
+        it("should handle auction with no bids", async function () {
+            this.timeout(30_000);
+
+            // USER4 creates a new token and an auction for it
+            const mintRequest = await user4Client.collection.createMintRequest("NO_BID_TOKEN", "url_no_bid");
+            const mintTx = await relayerClient.collection.relayMintRequest(mintRequest.request, mintRequest.signature);
+            await mintTx.wait(1);
+
+            const userCollection = await user4Client.collection.getCollection();
+            const noBidTokenId = userCollection[userCollection.length - 1].id;
+
+            const approveRequest = await user4Client.collection.createApproveRequest(contractAddress, noBidTokenId);
+            const approveTx = await relayerClient.collection.relayApproveRequest(approveRequest.request, approveRequest.signature);
+            await approveTx.wait(1);
+
+            const currentTime = await relayerClient.getLastBlockTimestamp();
+            const noBidAuctionEndTime = currentTime + 15; // Short auction
+
+            const createAuctionRequest = await user4Client.auctions.createAuctionRequest(noBidTokenId, 1000n, BigInt(noBidAuctionEndTime));
+            const createTx = await relayerClient.auctions.relayCreateAuctionRequest(createAuctionRequest.request, createAuctionRequest.signature);
+            await createTx.wait(1);
+
+            const userAuctions = await user4Client.auctions.getAuctions();
+            const noBidAuctionId = userAuctions[userAuctions.length - 1].id;
+
+            // Wait for the auction to end
+            while (await relayerClient.getLastBlockTimestamp() < noBidAuctionEndTime) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+
+            // Finalize the auction
+            const finalizeTx = await relayerClient.auctions.finalizeAuction(noBidAuctionId);
+            await finalizeTx.wait(1);
+
+            // Verify the auction details
+            const finalizedAuction = await user4Client.auctions.getAuction(noBidAuctionId);
+            const user4Address = await user4Client.getAddress();
+
+            expect(finalizedAuction.settled).to.be.true;
+            expect(finalizedAuction.highestBidder).to.equal(user4Address); // Should be the seller
+            expect(finalizedAuction.highestBid).to.equal(0n);
+
+            // Verify USER4 got the token back
+            const finalUserCollection = await user4Client.collection.getCollection();
+            expect(finalUserCollection.length).to.equal(1);
+            const tokenIds = finalUserCollection.map(t => t.id);
+            expect(tokenIds).to.include(noBidTokenId);
+        });
+
+        it("should not finalize an auction that has not ended", async function () {
+            this.timeout(15_000);
+
+            const mintRequest = await user4Client.collection.createMintRequest("FINALIZE_TEST", "url_finalize");
+            const mintTx = await relayerClient.collection.relayMintRequest(mintRequest.request, mintRequest.signature);
+            await mintTx.wait(1);
+
+            const userCollection = await user4Client.collection.getCollection();
+            const tokenId = userCollection[userCollection.length - 1].id;
+
+            const approveRequest = await user4Client.collection.createApproveRequest(contractAddress, tokenId);
+            const approveTx = await relayerClient.collection.relayApproveRequest(approveRequest.request, approveRequest.signature);
+            await approveTx.wait(1);
+
+            const currentTime = await relayerClient.getLastBlockTimestamp();
+            const auctionEndTime = currentTime + 300; // Long auction
+
+            const createAuctionRequest = await user4Client.auctions.createAuctionRequest(tokenId, 10n, BigInt(auctionEndTime));
+            const createTx = await relayerClient.auctions.relayCreateAuctionRequest(createAuctionRequest.request, createAuctionRequest.signature);
+            await createTx.wait(1);
+
+            const userAuctions = await user4Client.auctions.getAuctions();
+            const auctionId = userAuctions[userAuctions.length - 1].id;
+
+            await expect(relayerClient.auctions.finalizeAuction(auctionId)).to.be.rejectedWith(/Auction not ended yet/);
         });
     });
 };

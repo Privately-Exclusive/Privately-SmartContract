@@ -1,17 +1,17 @@
 {
     "name": "privately-smartcontract-lib",
-    "version": "1.0.6",
+    "version": "1.0.7",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
     "scripts": {
-        "build": "tsc && cp PrivatelyAuctionSystem.json dist && cp PrivatelyCoin.json dist && cp PrivatelyCollection.json dist",
-        "pretest": "cp PrivatelyAuctionSystem.json test/ && cp PrivatelyCoin.json test/ && cp PrivatelyCollection.json test/",
+        "build": "tsc && cp PrivatelyAuctionSystem.json dist && cp MockUSDC.json dist && cp PrivatelyCollection.json dist",
+        "pretest": "cp PrivatelyAuctionSystem.json test/ && cp MockUSDC.json test/ && cp PrivatelyCollection.json test/",
         "test": "nyc mocha --exit --require ts-node/register 'test/**/*.test.ts'"
     },
     "files": [
         "dist",
         "PrivatelyAuctionSystem.json",
-        "PrivatelyCoin.json",
+        "MockUSDC.json",
         "PrivatelyCollection.json"
     ],
     "keywords": [],

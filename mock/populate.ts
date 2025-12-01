@@ -6,12 +6,15 @@ const PROVIDER_URL = "http://127.0.0.1:8545/";
 const RELAYER_PRIVATE_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
 const USER1_PRIVATE_KEY = "0xdf57089febbacf7ba0bc227dafbffa9fc08a93fdc68e1e42411a14efcf23656e";
 
+// USDC has 6 decimals, so 1 USDC = 1_000_000
+const USDC_DECIMALS = 1_000_000n;
+
 const nftsToCreate = [
     {
         url: "https://images.pexels.com/photos/574519/pexels-photo-574519.jpeg",
         name: "BMW",
         description: "A stunning red BMW captured in motion, embodying speed and elegance.",
-        price: '1',
+        price: 1n * USDC_DECIMALS, // 1 USDC
         type: 'image',
         endDate: ''
     },
@@ -19,7 +22,7 @@ const nftsToCreate = [
         url: "https://images.pexels.com/photos/14659337/pexels-photo-14659337.jpeg",
         name: "Look",
         description: "A contemplative glance frozen in time — a portrait full of emotion and mystery.",
-        price: '1',
+        price: 1n * USDC_DECIMALS, // 1 USDC
         type: 'image',
         endDate: ''
     },
@@ -27,7 +30,7 @@ const nftsToCreate = [
         url: "https://images.pexels.com/photos/32958964/pexels-photo-32958964.jpeg",
         name: "Moon",
         description: "A surreal composition of the moon resting inside a factory setting — industrial meets celestial.",
-        price: '1',
+        price: 1n * USDC_DECIMALS, // 1 USDC
         type: 'image',
         endDate: ''
     },
@@ -35,15 +38,15 @@ const nftsToCreate = [
         url: "https://images.pexels.com/photos/31558940/pexels-photo-31558940.jpeg",
         name: "Dance with Sea",
         description: "A graceful figure dancing beside the waves — a tribute to nature and human movement.",
-        price: '1',
+        price: 1n * USDC_DECIMALS, // 1 USDC
         type: 'image',
         endDate: ''
     },
     {
         url: "https://images.pexels.com/photos/705423/pexels-photo-705423.jpeg",
         name: "Real Barcelona",
-        description: "A raw and atmospheric capture of Barcelona’s everyday beauty, where architecture and soul meet.",
-        price: '1',
+        description: "A raw and atmospheric capture of Barcelona's everyday beauty, where architecture and soul meet.",
+        price: 1n * USDC_DECIMALS, // 1 USDC
         type: 'image',
         endDate: ''
     },
@@ -51,7 +54,7 @@ const nftsToCreate = [
         url: "https://images.pexels.com/photos/1423580/pexels-photo-1423580.jpeg",
         name: "Great Wall of China",
         description: "A breathtaking view of the Great Wall of China stretching through mountainous terrain — history carved in stone.",
-        price: '1',
+        price: 1n * USDC_DECIMALS, // 1 USDC
         type: 'image',
         endDate: ''
     },
@@ -59,7 +62,7 @@ const nftsToCreate = [
         url: "https://images.pexels.com/photos/12985830/pexels-photo-12985830.jpeg",
         name: "Simple Device",
         description: "Minimalist tech aesthetics: a clean and modern device placed in a soft, ambient setting.",
-        price: '1',
+        price: 1n * USDC_DECIMALS, // 1 USDC
         type: 'image',
         endDate: ''
     },
@@ -113,8 +116,8 @@ async function main() {
             const approveNftTx = await relayerClient.collection.relayApproveRequest(approveNftRequest, approveNftSignature);
             await approveNftTx.wait();
 
-            // Create the auction
-            const { request: createAuctionRequest, signature: createAuctionSignature } = await user1Client.auctions.createAuctionRequest(tokenId, BigInt(nftData.price), BigInt(auctionEndTime));
+            // Create the auction (price is already in USDC with 6 decimals)
+            const { request: createAuctionRequest, signature: createAuctionSignature } = await user1Client.auctions.createAuctionRequest(tokenId, nftData.price, BigInt(auctionEndTime));
             const createAuctionTx = await relayerClient.auctions.relayCreateAuctionRequest(createAuctionRequest, createAuctionSignature);
             await createAuctionTx.wait();
 

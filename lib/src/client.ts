@@ -1,7 +1,6 @@
 import { Block, Network, Signer, TransactionResponse } from "ethers";
 import { PrivatelyError } from "./common";
 import { PrivatelyAuctionSystemClient } from "./modules/auctions";
-import { PrivatelyCoinClient } from "./modules/coin";
 import { PrivatelyCollectionClient } from "./modules/collection";
 
 
@@ -10,7 +9,6 @@ export class PrivatelyClient {
 
     public readonly signer: Signer;
 
-    public readonly coin: PrivatelyCoinClient;
     public readonly collection: PrivatelyCollectionClient;
     public readonly auctions: PrivatelyAuctionSystemClient;
 
@@ -18,7 +16,6 @@ export class PrivatelyClient {
 
     private constructor(signer: Signer, network: Network) {
         this.signer = signer;
-        this.coin = new PrivatelyCoinClient(signer, network);
         this.collection = new PrivatelyCollectionClient(signer, network);
         this.auctions = new PrivatelyAuctionSystemClient(signer, network);
     }

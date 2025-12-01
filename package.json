@@ -1,8 +1,9 @@
 {
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
-    "hardhat": "^2.22.18",
+    "dotenv": "^17.2.3",
     "ethers": "^6.13.5",
+    "hardhat": "^2.22.18",
     "ts-node": "^10.9.2"
   },
   "dependencies": {

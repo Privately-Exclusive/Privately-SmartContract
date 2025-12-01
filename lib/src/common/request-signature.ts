@@ -30,8 +30,13 @@ export class RequestSignature<T> {
 
     public static deserialize<T>(json: string): RequestSignature<T> {
         const parsed = JSON.parse(json, (key, value) => {
-            if (typeof value === "string" && value.endsWith("n"))
-                return BigInt(value.slice(0, -1));
+            if (typeof value === "string" && value.endsWith("n")) {
+                const numStr = value.slice(0, -1);
+                // Only convert to BigInt if the string (without 'n') is a valid integer
+                if (/^-?\d+$/.test(numStr)) {
+                    return BigInt(numStr);
+                }
+            }
             return value;
         });
         return new RequestSignature<T>(parsed.type, parsed.signature, parsed.request);

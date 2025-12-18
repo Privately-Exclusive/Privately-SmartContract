@@ -4,6 +4,17 @@ import { PrivatelyAuctionSystemClient } from "./modules/auctions";
 import { PrivatelyCollectionClient } from "./modules/collection";
 
 
+/**
+ * Options for creating a PrivatelyClient instance.
+ * Use these to override default contract addresses (e.g., for testnet/mainnet).
+ */
+export interface PrivatelyClientOptions {
+    /** Override the collection contract address */
+    collectionAddress?: string;
+    /** Override the auction contract address */
+    auctionAddress?: string;
+}
+
 
 export class PrivatelyClient {
 
@@ -14,22 +25,23 @@ export class PrivatelyClient {
 
 
 
-    private constructor(signer: Signer, network: Network) {
+    private constructor(signer: Signer, network: Network, options?: PrivatelyClientOptions) {
         this.signer = signer;
-        this.collection = new PrivatelyCollectionClient(signer, network);
-        this.auctions = new PrivatelyAuctionSystemClient(signer, network);
+        this.collection = new PrivatelyCollectionClient(signer, network, options?.collectionAddress);
+        this.auctions = new PrivatelyAuctionSystemClient(signer, network, options?.auctionAddress);
     }
 
 
     /**
      * Creates a new PrivatelyClient instance using the provided signer.
      * @param signer The signer to use for transactions.
+     * @param options Optional configuration for contract addresses.
      * @returns A new PrivatelyClient instance.
      */
-    public static async create(signer: Signer): Promise<PrivatelyClient> {
+    public static async create(signer: Signer, options?: PrivatelyClientOptions): Promise<PrivatelyClient> {
         if (!signer.provider) throw new Error("Signer must be connected to a provider.");
         const network = await signer.provider.getNetwork();
-        return new PrivatelyClient(signer, network);
+        return new PrivatelyClient(signer, network, options);
     }
 
 

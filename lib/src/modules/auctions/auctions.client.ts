@@ -12,12 +12,14 @@ import { AuctionsNonces } from "./auctions.nonces";
 
 
 
-const AUCTION_SYSTEM_ADDRESS = "0x9fe46736679d2d9a65f0992f2272de9f3c7fa6e0";
+/** Default address for local Hardhat deployment */
+export const DEFAULT_AUCTION_ADDRESS = "0x9fe46736679d2d9a65f0992f2272de9f3c7fa6e0";
 
 
 
 export class PrivatelyAuctionSystemClient {
     public readonly contract: Contract;
+    public readonly address: string;
 
     private readonly signer: Signer;
     private readonly domain: TypedDataDomain;
@@ -25,17 +27,19 @@ export class PrivatelyAuctionSystemClient {
 
     constructor(
         signer: Signer,
-        network: Network
+        network: Network,
+        address: string = DEFAULT_AUCTION_ADDRESS
     ) {
         this.signer = signer;
-        this.contract = new Contract(AUCTION_SYSTEM_ADDRESS, AUCTION_SYSTEM_ARTIFACT.abi, signer);
+        this.address = address;
+        this.contract = new Contract(address, AUCTION_SYSTEM_ARTIFACT.abi, signer);
 
         const name: string = AUCTION_SYSTEM_ARTIFACT.contractName;
         this.domain = {
             name,
             version: "1.0.0",
             chainId: network.chainId,
-            verifyingContract: AUCTION_SYSTEM_ADDRESS
+            verifyingContract: address
         };
     }
 
@@ -45,7 +49,7 @@ export class PrivatelyAuctionSystemClient {
      * @returns The contract address.
      */
     public getContractAddress(): string {
-        return AUCTION_SYSTEM_ADDRESS;
+        return this.address;
     }
 
 

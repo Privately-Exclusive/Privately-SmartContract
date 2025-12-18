@@ -12,12 +12,14 @@ import { COLLECTION_TRANSFER_REQUEST_TYPE, CollectionTransferRequest } from "./c
 
 
 
-const COLLECTION_ADDRESS = "0xe7f1725e7734ce288f8367e1bb143e90bb3f0512";
+/** Default address for local Hardhat deployment */
+export const DEFAULT_COLLECTION_ADDRESS = "0xe7f1725e7734ce288f8367e1bb143e90bb3f0512";
 
 
 
 export class PrivatelyCollectionClient {
     public readonly contract: Contract;
+    public readonly address: string;
 
     private readonly signer: Signer;
     private readonly domain: TypedDataDomain;
@@ -25,17 +27,19 @@ export class PrivatelyCollectionClient {
 
     constructor(
         signer: Signer,
-        network: Network
+        network: Network,
+        address: string = DEFAULT_COLLECTION_ADDRESS
     ) {
         this.signer = signer;
-        this.contract = new Contract(COLLECTION_ADDRESS, COLLECTION_ARTIFACT.abi, signer);
+        this.address = address;
+        this.contract = new Contract(address, COLLECTION_ARTIFACT.abi, signer);
 
         const name: string = COLLECTION_ARTIFACT.contractName;
         this.domain = {
             name,
             version: "1.0.0",
             chainId: network.chainId,
-            verifyingContract: COLLECTION_ADDRESS
+            verifyingContract: address
         };
     }
 

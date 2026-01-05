@@ -8,6 +8,7 @@ import { OnMintListener, OnTransferListener } from "./collection.events";
 import { COLLECTION_MINT_REQUEST_TYPE, CollectionMintRequest } from "./collection.mint.request";
 import { PrivatelyNFT } from "./collection.nft";
 import { CollectionNonces } from "./collection.nonces";
+import { COLLECTION_SET_TOKEN_URI_REQUEST_TYPE, CollectionSetTokenURIRequest } from "./collection.settokenuri.request";
 import { COLLECTION_TRANSFER_REQUEST_TYPE, CollectionTransferRequest } from "./collection.transfer.request";
 
 
@@ -262,6 +263,71 @@ export class PrivatelyCollectionClient {
                 request.tokenId,
                 signature
             );
+        } catch (error) {
+            throw CollectionError.from(error, this.contract);
+        }
+    }
+
+
+    /**
+     * Creates a signed request to update the token URI for an NFT.
+     * This allows the owner to update the NFT's metadata URI via meta-transaction.
+     * @param tokenId The ID of the NFT to update.
+     * @param tokenURI The new metadata URI.
+     * @returns A RequestSignature containing the SetTokenURIRequest and signature.
+     */
+    public async createSetTokenURIRequest(
+        tokenId: bigint,
+        tokenURI: string
+    ): Promise<RequestSignature<CollectionSetTokenURIRequest>> {
+        if (!tokenURI.trim()) throw new CollectionError("Token URI cannot be empty");
+
+        const owner = await this.signer.getAddress();
+        const nonce = (await this.getNonces()).mintNonce;
+
+        const request: CollectionSetTokenURIRequest = {
+            owner,
+            tokenId,
+            tokenURI,
+            nonce
+        };
+
+        const signature = await this.signer.signTypedData(
+            this.domain,
+            COLLECTION_SET_TOKEN_URI_REQUEST_TYPE,
+            request
+        );
+        return new RequestSignature<CollectionSetTokenURIRequest>(RequestType.COLLECTION_SET_TOKEN_URI, signature, request);
+    }
+
+
+    /**
+     * Relays a signed setTokenURI request to the blockchain.
+     * The relayer (caller of this function) is responsible for the transaction's gas cost.
+     * @param request The SetTokenURIRequest object containing owner, tokenId, tokenURI, and nonce.
+     * @param signature The EIP-712 signature that authorizes this update.
+     * @returns A TransactionResponse object from ethers.
+     */
+    public async relaySetTokenURIRequest(
+        request: CollectionSetTokenURIRequest,
+        signature: string
+    ): Promise<TransactionResponse> {
+        try {
+            return await this.contract.metaSetTokenURI(request, signature);
+        } catch (error) {
+            throw CollectionError.from(error, this.contract);
+        }
+    }
+
+
+    /**
+     * Retrieves the token URI for a given NFT.
+     * @param tokenId The ID of the NFT.
+     * @returns The metadata URI string.
+     */
+    public async getTokenURI(tokenId: bigint): Promise<string> {
+        try {
+            return await this.contract.tokenURI(tokenId);
         } catch (error) {
             throw CollectionError.from(error, this.contract);
         }

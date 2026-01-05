@@ -4,4 +4,5 @@ export * from "./collection.errors";
 export * from "./collection.mint.request";
 export * from "./collection.nft";
 export * from "./collection.nonces";
+export * from "./collection.settokenuri.request";
 export * from "./collection.transfer.request";

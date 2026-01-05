@@ -48,6 +48,18 @@ contract PrivatelyCollection is ERC721URIStorage, EIP712 {
 
 
     /**
+     * @dev Emitted when an NFT's token URI is updated.
+     * @param tokenId          Identifier of the token whose URI was updated.
+     * @param tokenURI         New URI pointing to the NFT's metadata.
+     */
+    event TokenURIUpdated(
+        uint256 indexed tokenId,
+        string tokenURI
+    );
+
+
+
+    /**
      * @dev Struct to store internal data associated with an NFT.
      * @param title The title of the NFT.
      * @param author The author of the NFT.
@@ -111,6 +123,22 @@ contract PrivatelyCollection is ERC721URIStorage, EIP712 {
 
 
 
+    /**
+     * @dev Struct for EIP-712 signed setTokenURI requests.
+     * @param owner The address of the current owner of the NFT.
+     * @param tokenId The unique identifier of the NFT.
+     * @param tokenURI The new URI pointing to the NFT's metadata.
+     * @param nonce A unique value to prevent replay attacks.
+     */
+    struct SetTokenURIRequest {
+        address owner;
+        uint256 tokenId;
+        string tokenURI;
+        uint256 nonce;
+    }
+
+
+
     bytes32 private constant MINT_REQUEST_TYPEHASH = keccak256(
         "MintRequest(address user,string title,address author,string tokenURI,uint256 nonce)"
     );
@@ -119,6 +147,9 @@ contract PrivatelyCollection is ERC721URIStorage, EIP712 {
     );
     bytes32 private constant APPROVE_REQUEST_TYPEHASH = keccak256(
         "ApproveRequest(address owner,address spender,uint256 tokenId,uint256 nonce)"
+    );
+    bytes32 private constant SET_TOKEN_URI_REQUEST_TYPEHASH = keccak256(
+        "SetTokenURIRequest(address owner,uint256 tokenId,string tokenURI,uint256 nonce)"
     );
 
 
@@ -372,6 +403,59 @@ contract PrivatelyCollection is ERC721URIStorage, EIP712 {
             }
         }
         return tokens;
+    }
+
+
+
+    /**
+     * @dev Meta-transaction function to set the token URI for an NFT.
+     *      This function allows the owner of an NFT to update its metadata URI
+     *      using an EIP-712 signed message, enabling gasless transactions.
+     *
+     * @param request A SetTokenURIRequest containing:
+     *        - owner: The address of the current NFT owner
+     *        - tokenId: The ID of the NFT to update
+     *        - tokenURI: The new metadata URI
+     *        - nonce: A unique value to prevent replay attacks
+     * @param signature The EIP-712 signature from the owner authorizing this operation
+     *
+     * Requirements:
+     * - The signature must be valid and from the specified owner
+     * - The owner must actually own the specified token
+     * - The nonce must match the owner's current nonce
+     */
+    function metaSetTokenURI(
+        SetTokenURIRequest calldata request,
+        bytes calldata signature
+    ) external {
+        // Verify EIP-712 signature
+        bytes32 digest = _hashTypedDataV4(
+            keccak256(
+                abi.encode(
+                    SET_TOKEN_URI_REQUEST_TYPEHASH,
+                    request.owner,
+                    request.tokenId,
+                    keccak256(bytes(request.tokenURI)),
+                    request.nonce
+                )
+            )
+        );
+
+        address signer = ECDSA.recover(digest, signature);
+        require(signer == request.owner, "Invalid signature");
+
+        // Verify ownership
+        require(ownerOf(request.tokenId) == request.owner, "Not token owner");
+
+        // Verify and increment nonce
+        require(mintNonces[request.owner] == request.nonce, "Invalid nonce");
+        mintNonces[request.owner]++;
+
+        // Set the new token URI
+        _setTokenURI(request.tokenId, request.tokenURI);
+
+        // Emit event
+        emit TokenURIUpdated(request.tokenId, request.tokenURI);
     }
 
 

@@ -1,4 +1,4 @@
-import { Contract, Network, Signer, TransactionResponse, TypedDataDomain } from "ethers";
+import { Contract, EventLog, Network, Signer, TransactionResponse, TypedDataDomain } from "ethers";
 import { Log } from "ethers/lib.esm";
 
 import AUCTION_SYSTEM_ARTIFACT from "../../../PrivatelyAuctionSystem.json";
@@ -7,7 +7,7 @@ import { Auction } from "./auctions.auction";
 import { AUCTIONS_BID_REQUEST_TYPE, BidAuctionRequest } from "./auctions.bid.reqest";
 import { AUCTIONS_CREATE_REQUEST_TYPE, CreateAuctionRequest } from "./auctions.create.request";
 import { AuctionSystemError } from "./auctions.errors";
-import { OnBidListener, OnCreateListener, OnEnd, OnWithdrawListener } from "./auctions.events";
+import { BidHistory, OnBidListener, OnCreateListener, OnEnd, OnWithdrawListener } from "./auctions.events";
 import { AuctionsNonces } from "./auctions.nonces";
 
 
@@ -439,6 +439,31 @@ export class PrivatelyAuctionSystemClient {
         try {
             const auctionList = await this.contract.getAllExpiredUnfinalizedAuctions();
             return await Auction.map(auctionList, this);
+        } catch (error) {
+            throw AuctionSystemError.from(error, this.contract);
+        }
+    }
+
+
+    /**
+     * Retrieves the bid history for a specific auction from blockchain logs.
+     * @param auctionId The ID of the auction to fetch bid history for.
+     * @returns An array of BidHistory objects in chronological order.
+     */
+    public async getAuctionBidHistory(auctionId: bigint): Promise<BidHistory[]> {
+        try {
+            const filter = this.contract.filters.OnBid(auctionId);
+            const events = await this.contract.queryFilter(filter);
+
+            return events
+                .filter((event): event is EventLog => event instanceof EventLog)
+                .map(event => ({
+                    auctionId: event.args[0],
+                    bidder: event.args[1],
+                    bidAmount: event.args[2],
+                    blockNumber: event.blockNumber,
+                    transactionHash: event.transactionHash
+                }));
         } catch (error) {
             throw AuctionSystemError.from(error, this.contract);
         }

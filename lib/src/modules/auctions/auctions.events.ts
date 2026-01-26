@@ -1,6 +1,14 @@
 import { Log } from "ethers/lib.esm";
 
 
+export interface BidHistory {
+    auctionId: bigint;
+    bidder: string;
+    bidAmount: bigint;
+    blockNumber: number;
+    transactionHash: string;
+}
+
 
 export type OnCreateListener = (
     auctionId: bigint,

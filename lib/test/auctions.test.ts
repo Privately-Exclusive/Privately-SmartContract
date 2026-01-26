@@ -777,6 +777,101 @@ export const auctionSystemTests = function () {
         });
     });
 
+    describe("Bid History", function () {
+        let bidHistoryTokenId: bigint;
+        let bidHistoryAuctionId: bigint;
+        let bidHistoryEndTime: number;
+
+        it("should create an auction and place multiple bids for history test", async function () {
+            this.timeout(60_000);
+
+            // Mint tokens for users
+            const mintUsdcTx1 = await mockUSDC.mint(await user2Client.getAddress(), 500_000_000n);
+            await mintUsdcTx1.wait();
+            const mintUsdcTx2 = await mockUSDC.mint(await user3Client.getAddress(), 500_000_000n);
+            await mintUsdcTx2.wait();
+
+            // Mint NFT for USER1
+            const mintReq = await user1Client.collection.createMintRequest("BID_HISTORY_TOKEN", "url_bid_history");
+            const mintTx = await relayerClient.collection.relayMintRequest(mintReq.request, mintReq.signature);
+            await mintTx.wait(1);
+
+            const collection = await user1Client.collection.getCollection();
+            bidHistoryTokenId = collection[collection.length - 1].id;
+
+            // Create auction
+            const currentTime = await relayerClient.getLastBlockTimestamp();
+            bidHistoryEndTime = currentTime + 120;
+
+            const approveReq = await user1Client.collection.createApproveRequest(contractAddress, bidHistoryTokenId);
+            const approveTx = await relayerClient.collection.relayApproveRequest(approveReq.request, approveReq.signature);
+            await approveTx.wait(1);
+
+            const createReq = await user1Client.auctions.createAuctionRequest(bidHistoryTokenId, 5_000_000n, BigInt(bidHistoryEndTime));
+            const createTx = await relayerClient.auctions.relayCreateAuctionRequest(createReq.request, createReq.signature);
+            await createTx.wait(1);
+
+            const userAuctions = await user1Client.auctions.getAuctions();
+            bidHistoryAuctionId = userAuctions[userAuctions.length - 1].id;
+
+            // USER2 bids
+            const approveTx1 = await mockUSDC.connect(user2Wallet).approve(contractAddress, 10_000_000n);
+            await approveTx1.wait(1);
+            const bidReq1 = await user2Client.auctions.createBidRequest(bidHistoryAuctionId, 10_000_000n);
+            const bidTx1 = await relayerClient.auctions.relayBidRequest(bidReq1.request, bidReq1.signature);
+            await bidTx1.wait(1);
+
+            // USER3 bids
+            const approveTx2 = await mockUSDC.connect(user3Wallet).approve(contractAddress, 20_000_000n);
+            await approveTx2.wait(1);
+            const bidReq2 = await user3Client.auctions.createBidRequest(bidHistoryAuctionId, 20_000_000n);
+            const bidTx2 = await relayerClient.auctions.relayBidRequest(bidReq2.request, bidReq2.signature);
+            await bidTx2.wait(1);
+
+            // USER2 bids again
+            const approveTx3 = await mockUSDC.connect(user2Wallet).approve(contractAddress, 30_000_000n);
+            await approveTx3.wait(1);
+            const bidReq3 = await user2Client.auctions.createBidRequest(bidHistoryAuctionId, 30_000_000n);
+            const bidTx3 = await relayerClient.auctions.relayBidRequest(bidReq3.request, bidReq3.signature);
+            await bidTx3.wait(1);
+        });
+
+        it("should retrieve all bids from getAuctionBidHistory", async function () {
+            this.timeout(10_000);
+
+            const bidHistory = await relayerClient.auctions.getAuctionBidHistory(bidHistoryAuctionId);
+
+            expect(bidHistory).to.be.an("array").that.has.lengthOf(3);
+
+            // Verify first bid (USER2)
+            expect(bidHistory[0].auctionId).to.equal(bidHistoryAuctionId);
+            expect(bidHistory[0].bidder).to.equal(await user2Client.getAddress());
+            expect(bidHistory[0].bidAmount).to.equal(10_000_000n);
+            expect(bidHistory[0].blockNumber).to.be.a("number");
+            expect(bidHistory[0].transactionHash).to.be.a("string");
+
+            // Verify second bid (USER3)
+            expect(bidHistory[1].auctionId).to.equal(bidHistoryAuctionId);
+            expect(bidHistory[1].bidder).to.equal(await user3Client.getAddress());
+            expect(bidHistory[1].bidAmount).to.equal(20_000_000n);
+
+            // Verify third bid (USER2 again)
+            expect(bidHistory[2].auctionId).to.equal(bidHistoryAuctionId);
+            expect(bidHistory[2].bidder).to.equal(await user2Client.getAddress());
+            expect(bidHistory[2].bidAmount).to.equal(30_000_000n);
+
+            // Verify chronological order (block numbers should be increasing)
+            expect(bidHistory[0].blockNumber).to.be.lessThanOrEqual(bidHistory[1].blockNumber);
+            expect(bidHistory[1].blockNumber).to.be.lessThanOrEqual(bidHistory[2].blockNumber);
+        });
+
+        it("should return empty array for auction with no bids", async function () {
+            const unknownAuctionId = 99999n;
+            const bidHistory = await relayerClient.auctions.getAuctionBidHistory(unknownAuctionId);
+            expect(bidHistory).to.be.an("array").that.has.lengthOf(0);
+        });
+    });
+
     describe("Auction with no bids", function () {
         it("should handle auction with no bids", async function () {
             this.timeout(30_000);
